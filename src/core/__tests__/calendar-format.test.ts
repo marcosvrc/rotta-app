@@ -54,10 +54,10 @@ describe('lugares e deslocamentos', () => {
 
   it('estima o deslocamento entre paradas', () => {
     const c = lisboaCatalog;
-    const walk = estimateLeg(c.get('torre').location, c.get('jeronimos').location);
+    const walk = estimateLeg(c.get('torre').location!, c.get('jeronimos').location!);
     expect(walk.mode).toBe('A_PE');
     expect(walk.minutes).toBe(18);
-    const transit = estimateLeg(c.get('pasteis').location, c.get('lxfactory').location);
+    const transit = estimateLeg(c.get('pasteis').location!, c.get('lxfactory').location!);
     expect(transit.mode).toBe('TRANSPORTE');
     expect(transit.minutes).toBe(17);
   });

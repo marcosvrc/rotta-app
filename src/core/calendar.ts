@@ -75,6 +75,50 @@ export function plusDays(date: TripDate, days: number): TripDate {
   return { year, month, day };
 }
 
+export function minusDays(date: TripDate, days: number): TripDate {
+  let { year, month, day } = date;
+  day -= days;
+  while (day < 1) {
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+    day += daysInMonth(year, month);
+  }
+  return { year, month, day };
+}
+
+export function compareDates(a: TripDate, b: TripDate): number {
+  return a.year - b.year || a.month - b.month || a.day - b.day;
+}
+
+/** Ex.: "13/11/2026". */
+export function formatDateBr(date: TripDate): string {
+  return `${String(date.day).padStart(2, '0')}/${String(date.month).padStart(2, '0')}/${date.year}`;
+}
+
+/** Aceita "13/11/2026" ou "13/11/26". Devolve null se a data não existir. */
+export function parseDateBr(text: string): TripDate | null {
+  const m = text.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (!m) return null;
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const year = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) return null;
+  return { year, month, day };
+}
+
+/** Aceita "9:30", "09:30" ou "930". Devolve null se o horário não existir. */
+export function parseTime(text: string): Minutes | null {
+  const m = text.trim().match(/^(\d{1,2}):?(\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
 /** Ex.: "Sex, 13 nov". */
 export function shortDateLabel(date: TripDate): string {
   return `${WEEKDAY_LABELS[weekdayOf(date)].short}, ${date.day} ${MONTHS[date.month - 1]}`;

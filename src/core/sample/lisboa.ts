@@ -1,5 +1,8 @@
 import { MINUTES_IN_DAY, hm, plusDays, tripDate } from '../calendar';
+import { ChecklistItem, defaultChecklist } from '../checklist';
+import { Expense } from '../expenses';
 import { ALWAYS_OPEN, DayPlan, Place, PlaceCatalog, Stop, Trip } from '../model';
+import { Reservation } from '../reservations';
 
 /*
  * Viagem de exemplo usada enquanto o app não fala com o backend.
@@ -260,6 +263,9 @@ export function lisboaTrip(): Trip {
     travelers: 2,
     budgetBrl: 18_000,
     pace: 'MEDIO',
+    stay: 'CONFORTO',
+    food: 'MEDIA',
+    places,
     days: [
       day({
         date: start,
@@ -301,4 +307,33 @@ export function lisboaTrip(): Trip {
       }),
     ],
   };
+}
+
+export function lisboaExpenses(): Expense[] {
+  return [
+    { id: 'g1', dayIndex: 0, description: 'Táxi do aeroporto', category: 'TRANSPORTE', payment: 'CREDITO', amountBrl: 180 },
+    { id: 'g2', dayIndex: 0, description: 'Jantar com fado', category: 'ALIMENTACAO', payment: 'CREDITO', amountBrl: 390 },
+    { id: 'g3', dayIndex: 1, description: 'Ingressos Torre de Belém', category: 'PASSEIOS', payment: 'CREDITO', amountBrl: 120 },
+    { id: 'g4', dayIndex: 1, description: 'Pastéis de Belém', category: 'ALIMENTACAO', payment: 'DINHEIRO', amountBrl: 45 },
+    { id: 'g5', dayIndex: 1, description: 'Almoço na LX Factory', category: 'ALIMENTACAO', payment: 'DEBITO', amountBrl: 140 },
+    { id: 'g6', dayIndex: 1, description: 'Elétrico 28', category: 'TRANSPORTE', payment: 'DEBITO', amountBrl: 28 },
+    { id: 'g7', dayIndex: 2, description: 'Time Out Market', category: 'ALIMENTACAO', payment: 'CREDITO', amountBrl: 150 },
+    { id: 'g8', dayIndex: 2, description: 'Lembranças', category: 'COMPRAS', payment: 'PIX', amountBrl: 110 },
+  ];
+}
+
+export function lisboaReservations(): Reservation[] {
+  const start = tripDate(2026, 11, 12);
+  return [
+    { id: 'r1', type: 'VOO', title: 'GRU → LIS', date: start, time: hm(9, 40), code: '[LOCALIZADOR]', notes: 'Chegada em Lisboa; embarque em São Paulo na véspera' },
+    { id: 'r2', type: 'HOSPEDAGEM', title: 'Hotel em Alfama', date: start, time: hm(15), notes: '4 noites' },
+    { id: 'r3', type: 'INGRESSO', title: 'Torre de Belém', date: plusDays(start, 1), time: hm(10) },
+    { id: 'r4', type: 'INGRESSO', title: 'Palácio da Pena', date: plusDays(start, 3), time: hm(9, 30) },
+    { id: 'r5', type: 'VOO', title: 'LIS → GRU', date: plusDays(start, 4), time: hm(17, 30), code: '[LOCALIZADOR]' },
+  ];
+}
+
+export function lisboaChecklist(): ChecklistItem[] {
+  const done = new Set([0, 3, 4]);
+  return defaultChecklist((i) => `c${i + 1}`).map((item, i) => ({ ...item, done: done.has(i) }));
 }

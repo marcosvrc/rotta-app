@@ -8,8 +8,8 @@ import { PlaceAvatar } from '@/components/illustrations';
 import { Badge, Card, ScreenHeader, Txt } from '@/components/ui';
 import { shortDateLabel, timeLabel } from '@/core/calendar';
 import { formatDistance, formatDuration } from '@/core/format';
-import { tripRangeLabel } from '@/core/model';
-import { TRAVEL_MODE_LABEL, estimateLeg } from '@/core/travel';
+import { sortStops, tripRangeLabel } from '@/core/model';
+import { TRAVEL_MODE_LABEL, legBetween } from '@/core/travel';
 import { ISSUE_KIND_LABEL, Issue } from '@/core/validator';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
@@ -17,9 +17,11 @@ import { colors } from '@/theme';
 export default function ItineraryScreen() {
   const { trip, catalog, openIssues, selectedDay, setSelectedDay, validator, palette: p } = useRotta();
   const day = trip.days[selectedDay];
+  const stops = sortStops(day.stops);
   const dayIssues = openIssues.filter((i) => i.dayIndex === selectedDay);
-  const legs = day.stops.slice(1).map((s, i) => estimateLeg(catalog.get(day.stops[i].placeId).location, catalog.get(s.placeId).location));
-  const totalKm = legs.reduce((sum, l) => sum + l.distanceKm, 0);
+  const legs = stops.slice(1).map((s, i) => legBetween(catalog.get(stops[i].placeId).location, catalog.get(s.placeId).location));
+  const totalKm = legs.reduce((sum, l) => sum + (l?.distanceKm ?? 0), 0);
+  const addStop = () => router.push({ pathname: '/parada', params: { day: String(selectedDay) } });
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
@@ -29,7 +31,13 @@ export default function ItineraryScreen() {
         right={<AlertsChip issues={openIssues} />}
       />
 
-      <View style={styles.days} accessibilityRole="tablist">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={styles.days}
+        accessibilityRole="tablist"
+      >
         {trip.days.map((d, index) => {
           const selected = index === selectedDay;
           const hasIssue = openIssues.some((i) => i.dayIndex === index);
@@ -57,7 +65,7 @@ export default function ItineraryScreen() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
@@ -73,17 +81,19 @@ export default function ItineraryScreen() {
             {day.rainExpected && <Badge label="Chuva prevista" bg="#DCE7F5" fg="#1F3B63" />}
           </View>
           <View style={styles.statsRow}>
-            <Stat value={String(day.stops.length)} label="paradas" />
-            <Stat value={formatDistance(totalKm)} label="entre paradas" />
+            <Stat value={String(stops.length)} label="paradas" />
+            <Stat value={legs.some(Boolean) ? formatDistance(totalKm) : '–'} label="entre paradas" />
             <Stat value={formatDuration(validator.dayLoadMinutes(day))} label="de programação" />
           </View>
         </Card>
 
         <View style={{ height: 14 }} />
-        {day.stops.length === 0 && (
-          <Txt color={colors.muted}>Nenhuma parada neste dia.</Txt>
+        {stops.length === 0 && (
+          <Txt color={colors.muted} style={{ marginBottom: 8 }}>
+            Nenhuma parada neste dia ainda.
+          </Txt>
         )}
-        {day.stops.map((stop, index) => {
+        {stops.map((stop, index) => {
           const place = catalog.get(stop.placeId);
           const issue = dayIssues.find((i) => i.placeId === stop.placeId);
           const leg = legs[index];
@@ -135,8 +145,18 @@ export default function ItineraryScreen() {
             </Fragment>
           );
         })}
+        <Pressable
+          onPress={addStop}
+          accessibilityRole="button"
+          style={[styles.addStop, { borderColor: p.accent }]}
+        >
+          <Ionicons name="add-circle-outline" size={20} color={p.accent} />
+          <Txt weight="semibold" color={p.accent}>
+            Adicionar parada
+          </Txt>
+        </Pressable>
         <Txt size={12} color={colors.muted} style={{ marginTop: 16 }}>
-          Horários e distâncias de exemplo. No app final eles vêm do Google Places e da Routes API.
+          Distâncias estimadas em linha reta. Lugares criados por você não têm mapa até a integração com o Google Maps.
         </Txt>
       </ScrollView>
     </SafeAreaView>
@@ -177,10 +197,21 @@ function AlertsChip({ issues }: { issues: Issue[] }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   days: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 14 },
-  dayTab: { flex: 1, height: 60, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  dayTab: { width: 58, height: 60, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 6, height: 6, borderRadius: 3 },
   content: { paddingHorizontal: 20, paddingBottom: 120 },
   statsRow: { flexDirection: 'row', gap: 18, marginTop: 10 },
   leg: { marginLeft: 64, marginVertical: 6 },
+  addStop: {
+    marginTop: 14,
+    height: 52,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   alerts: { height: 40, borderRadius: 20, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
 });

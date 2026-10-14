@@ -36,3 +36,8 @@ export function estimateLeg(from: GeoPoint, to: GeoPoint): Leg {
   if (d <= 15) return { distanceKm: d, minutes: 8 + Math.ceil(((d * 1.3) / 20) * 60), mode: 'TRANSPORTE' };
   return { distanceKm: d, minutes: 10 + Math.ceil(((d * 1.2) / 45) * 60), mode: 'CARRO' };
 }
+
+/** Deslocamento entre dois lugares, ou null quando falta a localização de algum deles. */
+export function legBetween(from?: GeoPoint, to?: GeoPoint): Leg | null {
+  return from && to ? estimateLeg(from, to) : null;
+}

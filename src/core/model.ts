@@ -1,4 +1,5 @@
 import { MINUTES_IN_DAY, Minutes, TripDate, WEEKDAYS, WEEKDAY_LABELS, Weekday, rangeLabel, timeLabel } from './calendar';
+import { FoodLevel, StayLevel } from './cost';
 
 export interface GeoPoint {
   lat: number;
@@ -15,7 +16,24 @@ export type PlaceKind =
   | 'Bairro'
   | 'Palácio'
   | 'Aquário'
-  | 'Centro criativo';
+  | 'Centro criativo'
+  | 'Parque'
+  | 'Praia'
+  | 'Compras'
+  | 'Outro';
+
+export const PLACE_KINDS: PlaceKind[] = [
+  'Monumento',
+  'Museu',
+  'Restaurante',
+  'Mercado',
+  'Mirante',
+  'Bairro',
+  'Parque',
+  'Praia',
+  'Compras',
+  'Outro',
+];
 
 /** Horário de funcionamento. `closes` pode ser 1440 (meia-noite). */
 export interface OpeningHours {
@@ -49,7 +67,8 @@ export interface Place {
   name: string;
   kind: PlaceKind;
   neighborhood: string;
-  location: GeoPoint;
+  /** Sem coordenadas, o app não estima o deslocamento até a parada. */
+  location?: GeoPoint;
   /** Coberto: serve de plano B quando chove. */
   indoor: boolean;
   hours: OpeningHours;
@@ -59,6 +78,8 @@ export interface Place {
   story: string;
   tips: string[];
   sourceUrl?: string;
+  /** Criado pelo usuário, sem dados do Google Places. */
+  custom?: boolean;
 }
 
 export class PlaceCatalog {
@@ -112,6 +133,14 @@ export interface Trip {
   travelers: number;
   budgetBrl: number;
   pace: Pace;
+  stay: StayLevel;
+  food: FoodLevel;
+  /** Lugares da viagem: os do roteiro e os sugeridos que ainda não entraram nele. */
+  places: Place[];
+}
+
+export function catalogOf(trip: Trip): PlaceCatalog {
+  return new PlaceCatalog(trip.places);
 }
 
 export function nightsOf(trip: Trip): number {

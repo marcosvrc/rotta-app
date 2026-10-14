@@ -42,18 +42,22 @@ npm run typecheck   # checagem de tipos
 | `src/app/` | Telas e navegação (Expo Router). Cada arquivo é uma tela. |
 | `src/core/` | Lógica sem interface: modelos, validador de roteiro, simulador de custos e a viagem de exemplo. Pode ser reaproveitada no backend. |
 | `src/components/` | Componentes visuais compartilhados. |
-| `src/state/` | Estado do app. |
+| `src/state/` | Estado do app, salvo no aparelho, e anexos. |
 | `.github/workflows/` | CI que testa e gera o APK. |
 
 ## O que já funciona
 
 - Viagem de exemplo a Lisboa, com 5 dias e 16 paradas.
+- Criar, editar e apagar viagens; adicionar, mover e remover paradas, inclusive lugares criados por você.
 - Roteiro por dia com tempo e distância entre as paradas.
 - Detalhe do lugar com história, informações e dicas.
 - Verificação do roteiro: lugar fechado no dia, horário de abertura, deslocamento que não cabe, chuva em parada ao ar livre e dia pesado demais para o ritmo escolhido. Cada alerta traz um plano B que pode ser aplicado.
 - Simulador de custos por viajantes, hospedagem e alimentação, comparando com o orçamento.
+- Registro de gastos com gráficos por dia (comparando com o previsto), por categoria e por forma de pagamento.
+- Reservas com código e anexo de ingresso, QR code ou PDF, que abrem sem internet.
+- Checklist pré-viagem com prazos contados a partir da data de ida.
 - Troca da cor de destaque do app.
 
-Por enquanto os dados ficam só em memória, e horários e preços são de exemplo. Os próximos passos são o backend (Firebase), as APIs do Google Maps e a IA.
+Tudo fica salvo no aparelho e funciona offline. Horários de funcionamento e preços ainda são de exemplo. Os próximos passos são as APIs do Google Maps, o backend (Firebase) com login e a IA.
 
 A primeira versão, em Kotlin Multiplatform, está guardada na branch `kotlin-multiplatform`.

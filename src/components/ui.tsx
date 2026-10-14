@@ -1,7 +1,22 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { ComponentProps, ReactNode } from 'react';
-import { Pressable, StyleProp, StyleSheet, Text, TextProps, View, ViewStyle } from 'react-native';
+import { ComponentProps, ReactNode, useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  TextProps,
+  View,
+  ViewStyle,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { usePalette } from '@/state/rotta';
 import { FontWeightName, colors, fonts } from '@/theme';
@@ -357,6 +372,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  input: {
+    minHeight: 50,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  errorBox: {
+    backgroundColor: colors.criticalBg,
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+  },
+  formFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
   button: {
     height: 48,
     borderRadius: 24,
@@ -366,3 +410,158 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+/** Campo de texto com rótulo e dica opcional. */
+export function TextField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  hint,
+  keyboardType,
+  autoFocus,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  hint?: string;
+  keyboardType?: TextInputProps['keyboardType'];
+  autoFocus?: boolean;
+  multiline?: boolean;
+}) {
+  const p = usePalette();
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={{ gap: 6 }}>
+      <Txt weight="semibold" size={13} color={colors.muted}>
+        {label}
+      </Txt>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="#8A93A1"
+        keyboardType={keyboardType}
+        autoFocus={autoFocus}
+        multiline={multiline}
+        accessibilityLabel={label}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={[
+          styles.input,
+          multiline && { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' },
+          { borderColor: focused ? p.accent : colors.line, borderWidth: focused ? 1.5 : 1 },
+        ]}
+      />
+      {hint ? (
+        <Txt size={12} color={colors.muted}>
+          {hint}
+        </Txt>
+      ) : null}
+    </View>
+  );
+}
+
+/** Escolha de uma opção entre várias, em chips que quebram linha. */
+export function ChoiceChips<T extends string | number>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label?: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  const p = usePalette();
+  return (
+    <View style={{ gap: 6 }}>
+      {label ? (
+        <Txt weight="semibold" size={13} color={colors.muted}>
+          {label}
+        </Txt>
+      ) : null}
+      <View style={styles.chipsWrap} accessibilityRole="radiogroup">
+        {options.map((o) => {
+          const selected = o.value === value;
+          return (
+            <Pressable
+              key={String(o.value)}
+              onPress={() => onChange(o.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              style={[
+                styles.chip,
+                { backgroundColor: selected ? p.accent : colors.card, borderColor: selected ? p.accent : colors.line },
+              ]}
+            >
+              <Txt weight="medium" color={selected ? '#FFFFFF' : colors.ink}>
+                {o.label}
+              </Txt>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+export function ErrorBox({ errors }: { errors: string[] }) {
+  if (errors.length === 0) return null;
+  return (
+    <View style={styles.errorBox} accessibilityLiveRegion="polite" accessibilityRole="alert">
+      {errors.map((e) => (
+        <Txt key={e} size={13} color={colors.criticalInk}>
+          {e}
+        </Txt>
+      ))}
+    </View>
+  );
+}
+
+/** Pede confirmação antes de uma ação que não dá para desfazer. */
+export function confirmAction(title: string, message: string, confirmLabel: string, onConfirm: () => void) {
+  if (Platform.OS === 'web') {
+    if (globalThis.confirm?.(`${title}\n\n${message}`)) onConfirm();
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: confirmLabel, style: 'destructive', onPress: onConfirm },
+  ]);
+}
+
+/** Tela de formulário: cabeçalho, campos com rolagem e botão de salvar fixo embaixo. */
+export function FormScreen({
+  title,
+  subtitle,
+  children,
+  saveLabel = 'Salvar',
+  onSave,
+  footerExtra,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  saveLabel?: string;
+  onSave: () => void;
+  footerExtra?: ReactNode;
+}) {
+  return (
+    <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHeader back title={title} subtitle={subtitle} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 18 }} keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+        <View style={styles.formFooter}>
+          {footerExtra}
+          <PrimaryButton label={saveLabel} onPress={onSave} style={{ flex: 1 }} />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}

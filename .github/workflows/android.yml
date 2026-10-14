@@ -35,6 +35,9 @@ jobs:
       - name: Checar tipos
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Testes da lógica
         run: npm test -- --ci
 

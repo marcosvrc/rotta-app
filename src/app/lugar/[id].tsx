@@ -5,7 +5,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CityIllustration } from '@/components/illustrations';
-import { Badge, Card, Segmented, Txt } from '@/components/ui';
+import { Badge, Card, PrimaryButton, Segmented, Txt } from '@/components/ui';
 import { timeLabel } from '@/core/calendar';
 import { formatDuration } from '@/core/format';
 import { dayIndexOf, hoursLabel } from '@/core/model';
@@ -16,9 +16,9 @@ type Section = 'historia' | 'info' | 'dicas';
 
 export default function PlaceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { trip, catalog, palette: p } = useRotta();
+  const { trip, selectedDay, palette: p } = useRotta();
   const [section, setSection] = useState<Section>('historia');
-  const place = catalog.all.find((x) => x.id === id);
+  const place = trip.places.find((x) => x.id === id);
 
   if (!place) {
     return (
@@ -45,12 +45,17 @@ export default function PlaceScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.ink} />
           </Pressable>
         </SafeAreaView>
-        <Badge label="Foto do Google Places" bg="rgba(27,34,48,0.72)" fg="#FFFFFF" style={styles.photoBadge} />
+        <Badge
+          label={place.custom ? 'Lugar criado por você' : 'Foto do Google Places'}
+          bg="rgba(27,34,48,0.72)"
+          fg="#FFFFFF"
+          style={styles.photoBadge}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <Txt weight="semibold" size={12} color={p.ink} style={{ letterSpacing: 0.8 }}>
-          {`${place.kind} · ${place.neighborhood}`.toUpperCase()}
+          {(place.neighborhood ? `${place.kind} · ${place.neighborhood}` : place.kind).toUpperCase()}
         </Txt>
         <Txt weight="medium" size={28}>
           {place.name}
@@ -70,7 +75,13 @@ export default function PlaceScreen() {
         />
         <View style={{ height: 14 }} />
 
-        {section === 'historia' && (
+        {section === 'historia' && !place.story && (
+          <Txt color={colors.muted}>
+            Ainda não há história para este lugar. Quando a IA entrar no app, o resumo vem da Wikipedia com a fonte.
+          </Txt>
+        )}
+
+        {section === 'historia' && !!place.story && (
           <View>
             <Badge label="Resumo com IA a partir da Wikipedia" bg={p.tint} fg={p.ink} />
             <Txt size={16} style={{ marginTop: 10, lineHeight: 24 }}>
@@ -91,12 +102,13 @@ export default function PlaceScreen() {
             <InfoRow label="Horário" value={hoursLabel(place.hours)} />
             <InfoRow label="Tempo sugerido" value={formatDuration(place.suggestedMinutes)} />
             <InfoRow label="Ambiente" value={place.indoor ? 'Coberto' : 'Ao ar livre'} />
-            <InfoRow label="Bairro" value={place.neighborhood} />
+            {place.neighborhood ? <InfoRow label="Bairro" value={place.neighborhood} /> : null}
           </Card>
         )}
 
         {section === 'dicas' && (
           <View style={{ gap: 8 }}>
+            {place.tips.length === 0 && <Txt color={colors.muted}>Nenhuma dica anotada.</Txt>}
             {place.tips.map((tip) => (
               <View key={tip} style={styles.tip}>
                 <Txt>{tip}</Txt>
@@ -107,11 +119,28 @@ export default function PlaceScreen() {
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
-        <View style={[styles.status, { backgroundColor: dayIndex !== null ? p.tint : colors.background }]}>
-          <Txt weight="semibold" size={15} color={dayIndex !== null ? p.ink : colors.muted}>
-            {dayIndex !== null && stop ? `No roteiro · Dia ${dayIndex + 1}, ${timeLabel(stop.start)}` : 'Fora do roteiro'}
-          </Txt>
-        </View>
+        {dayIndex !== null && stop ? (
+          <View style={styles.footerRow}>
+            <View style={[styles.status, { backgroundColor: p.tint }]}>
+              <Txt weight="semibold" size={15} color={p.ink}>
+                {`Dia ${dayIndex + 1}, ${timeLabel(stop.start)}`}
+              </Txt>
+            </View>
+            <PrimaryButton
+              label="Editar parada"
+              onPress={() =>
+                router.push({ pathname: '/parada', params: { day: String(dayIndex), place: place.id } })
+              }
+              style={{ flex: 1 }}
+            />
+          </View>
+        ) : (
+          <PrimaryButton
+            label="Adicionar ao roteiro"
+            onPress={() => router.push({ pathname: '/parada', params: { day: String(selectedDay), place: place.id, novo: '1' } })}
+            style={{ marginBottom: 12 }}
+          />
+        )}
       </SafeAreaView>
     </View>
   );
@@ -145,5 +174,6 @@ const styles = StyleSheet.create({
   tip: { backgroundColor: colors.card, borderRadius: 16, padding: 14 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
   footer: { backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 12 },
-  status: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  footerRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  status: { flex: 1, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
 });

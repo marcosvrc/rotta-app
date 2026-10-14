@@ -24,3 +24,18 @@ export function formatDuration(minutes: number): string {
   const m = minutes % 60;
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 }
+
+/** Aceita "35", "35,50", "1.234,56" ou "R$ 35". Devolve null se não for um valor positivo. */
+export function parseMoney(text: string): number | null {
+  const clean = text.replace(/R\$|\s/g, '');
+  if (!/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(clean)) return null;
+  const value = Number(clean.replace(/\./g, '').replace(',', '.'));
+  return value > 0 ? Math.round(value * 100) / 100 : null;
+}
+
+/** Ex.: 35.5 -> "R$ 35,50"; 1234 -> "R$ 1.234,00". */
+export function formatBrlCents(value: number): string {
+  const cents = Math.round(Math.abs(value) * 100);
+  const reais = String(Math.floor(cents / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${value < 0 ? '-R$ ' : 'R$ '}${reais},${String(cents % 100).padStart(2, '0')}`;
+}

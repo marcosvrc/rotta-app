@@ -1,7 +1,7 @@
 import { Minutes, WEEKDAY_LABELS, timeLabel, weekdayOf } from './calendar';
 import { formatDuration } from './format';
 import { DayPlan, PACES, PlaceCatalog, Stop, Trip, dayIndexOf, isOpenOn, stopCount, stopEnd, updateDay } from './model';
-import { TRAVEL_MODE_LABEL, distanceKm, estimateLeg } from './travel';
+import { TRAVEL_MODE_LABEL, distanceKm, legBetween } from './travel';
 
 export type Severity = 'CRITICA' | 'ATENCAO';
 export type IssueKind = 'FECHADO' | 'HORARIO' | 'DESLOCAMENTO' | 'CLIMA' | 'RITMO';
@@ -194,9 +194,9 @@ export class ItineraryValidator {
         duration: Math.min(p.suggestedMinutes, p.hours.closes - stop.start, day.availableUntil - stop.start),
       }))
       .filter((c) => c.duration >= MIN_VISIT_MINUTES)
-      .sort((a, b) => distanceKm(place.location, a.place.location) - distanceKm(place.location, b.place.location));
+      .sort((a, b) => this.distance(place.location, a.place.location) - this.distance(place.location, b.place.location));
     const alt = candidates[0];
-    const leg = alt ? estimateLeg(place.location, alt.place.location) : null;
+    const leg = alt ? legBetween(place.location, alt.place.location) : null;
     return {
       id: `CLIMA-${dayIndex}-${stop.placeId}`,
       kind: 'CLIMA',
@@ -205,8 +205,11 @@ export class ItineraryValidator {
       placeId: stop.placeId,
       title: `Chuva prevista em ${place.name}`,
       detail: `Parada ao ar livre às ${timeLabel(stop.start)}, num dia com chuva prevista.`,
-      fixDescription:
-        alt && leg ? `Trocar por ${alt.place.name}, coberto e a ${leg.minutes} min ${TRAVEL_MODE_LABEL[leg.mode]}.` : null,
+      fixDescription: alt
+        ? leg
+          ? `Trocar por ${alt.place.name}, coberto e a ${leg.minutes} min ${TRAVEL_MODE_LABEL[leg.mode]}.`
+          : `Trocar por ${alt.place.name}, que é coberto.`
+        : null,
       fix: alt
         ? { type: 'REPLACE', day: dayIndex, placeId: stop.placeId, newPlaceId: alt.place.id, durationMinutes: alt.duration }
         : null,
@@ -220,9 +223,9 @@ export class ItineraryValidator {
       const b = day.stops[i + 1];
       const from = this.catalog.get(a.placeId);
       const to = this.catalog.get(b.placeId);
-      const leg = estimateLeg(from.location, to.location);
+      const leg = legBetween(from.location, to.location);
       const gap = b.start - stopEnd(a);
-      if (gap >= leg.minutes) continue;
+      if (!leg || gap >= leg.minutes) continue;
       const missing = Math.ceil((leg.minutes - gap) / 5) * 5;
       issues.push({
         id: `DESLOCAMENTO-${dayIndex}-${b.placeId}`,
@@ -289,6 +292,10 @@ export class ItineraryValidator {
   }
 
   private legMinutes(fromId: string, toId: string): number {
-    return estimateLeg(this.catalog.get(fromId).location, this.catalog.get(toId).location).minutes;
+    return legBetween(this.catalog.get(fromId).location, this.catalog.get(toId).location)?.minutes ?? 0;
+  }
+
+  private distance(a?: { lat: number; lng: number }, b?: { lat: number; lng: number }): number {
+    return a && b ? distanceKm(a, b) : Number.POSITIVE_INFINITY;
   }
 }

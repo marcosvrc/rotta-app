@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, ScreenHeader, SectionTitle, Segmented, ToggleChip, Txt } from '@/components/ui';
+import { Card, PrimaryButton, ScreenHeader, SectionTitle, Segmented, ToggleChip, Txt, confirmAction } from '@/components/ui';
 import { PACES, Pace } from '@/core/model';
 import { useRotta } from '@/state/rotta';
 import { ACCENT_OPTIONS, colors } from '@/theme';
@@ -10,7 +10,9 @@ import { ACCENT_OPTIONS, colors } from '@/theme';
 const INTERESTS = ['História', 'Gastronomia', 'Natureza', 'Praia', 'Vida noturna', 'Compras', 'Arte'];
 
 export default function SettingsScreen() {
-  const { accentId, setAccentId, trip, setTrip, interests, toggleInterest } = useRotta();
+  const { accentId, setAccentId, trip, updateTrip, interests, toggleInterest, data, lastSavedAt, resetToSample } = useRotta();
+  const reservations = data.trips.reduce((n, r) => n + r.reservations.length, 0);
+  const attachments = data.trips.reduce((n, r) => n + r.reservations.filter((x) => x.attachment).length, 0);
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
@@ -51,7 +53,7 @@ export default function SettingsScreen() {
         <Card>
           <Segmented<Pace>
             value={trip.pace}
-            onChange={(pace) => setTrip({ ...trip, pace })}
+            onChange={(pace) => updateTrip((t) => ({ ...t, pace }))}
             options={(Object.keys(PACES) as Pace[]).map((k) => ({ value: k, label: PACES[k].label }))}
           />
           <Txt size={13} color={colors.muted} style={{ marginTop: 8 }}>
@@ -71,13 +73,51 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
+        <SectionTitle>Dados no aparelho</SectionTitle>
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={styles.offlineIcon}>
+              <Ionicons name="cloud-offline-outline" size={20} color={colors.goodInk} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Txt weight="semibold" size={15}>
+                Funciona sem internet
+              </Txt>
+              <Txt size={13} color={colors.muted}>
+                {lastSavedAt
+                  ? `Salvo às ${String(lastSavedAt.getHours()).padStart(2, '0')}:${String(lastSavedAt.getMinutes()).padStart(2, '0')}`
+                  : 'Salvo automaticamente a cada mudança'}
+              </Txt>
+            </View>
+          </View>
+          <Txt size={13} color={colors.body} style={{ marginTop: 10 }}>
+            {`${data.trips.length} ${data.trips.length === 1 ? 'viagem' : 'viagens'} · ${reservations} ${reservations === 1 ? 'reserva' : 'reservas'} · ${attachments} ${attachments === 1 ? 'anexo' : 'anexos'}`}
+          </Txt>
+          <Txt size={12} color={colors.muted} style={{ marginTop: 4 }}>
+            Roteiros, gastos, reservas e ingressos ficam guardados só neste aparelho. Backup na nuvem chega com o login.
+          </Txt>
+          <PrimaryButton
+            label="Restaurar viagem de exemplo"
+            filled={false}
+            style={{ marginTop: 12 }}
+            onPress={() =>
+              confirmAction(
+                'Restaurar exemplo?',
+                'Todas as viagens, gastos, reservas e anexos deste aparelho serão apagados e a viagem a Lisboa volta.',
+                'Restaurar',
+                resetToSample,
+              )
+            }
+          />
+        </Card>
+
         <SectionTitle>Sobre</SectionTitle>
         <Card>
           <Txt weight="semibold" size={15}>
-            Rotta 0.1.0
+            Rotta 0.2.0
           </Txt>
           <Txt size={13} color={colors.muted}>
-            Versão de testes com uma viagem de exemplo a Lisboa. Os dados ainda ficam só neste aparelho.
+            Versão de testes. Mapas, login e IA chegam nas próximas etapas.
           </Txt>
         </Card>
       </ScrollView>
@@ -91,5 +131,6 @@ const styles = StyleSheet.create({
   swatches: { flexDirection: 'row', justifyContent: 'space-between' },
   swatchItem: { width: 72, alignItems: 'center', gap: 6, paddingVertical: 4 },
   swatch: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  offlineIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.goodBg, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
 });
