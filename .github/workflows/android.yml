@@ -1,0 +1,71 @@
+name: Android
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Checar tipos
+        run: npm run typecheck
+
+      - name: Testes da lógica
+        run: npm test -- --ci
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Gerar projeto Android
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Gerar APK de teste
+        working-directory: android
+        run: ./gradlew --no-daemon assembleRelease -PreactNativeArchitectures=arm64-v8a
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rotta-apk
+          path: android/app/build/outputs/apk/release/*.apk
+
+      - name: Publicar APK para baixar no celular
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk rotta.apk
+          gh release delete ultima-build --yes --cleanup-tag || true
+          gh release create ultima-build rotta.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Última build de teste" \
+            --notes "APK de teste gerado a partir do commit ${GITHUB_SHA::7}. Baixe rotta.apk no celular Android e instale."
