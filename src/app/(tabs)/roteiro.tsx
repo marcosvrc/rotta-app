@@ -1,26 +1,35 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
-import { Fragment } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { Fragment, useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlaceAvatar } from '@/components/illustrations';
 import { Badge, Card, ScreenHeader, Txt } from '@/components/ui';
+import { DayWeatherLine, WeatherStatusBar } from '@/components/weather';
 import { shortDateLabel, timeLabel } from '@/core/calendar';
 import { formatDistance, formatDuration } from '@/core/format';
 import { sortStops, tripRangeLabel } from '@/core/model';
 import { TRAVEL_MODE_LABEL, legBetween } from '@/core/travel';
 import { ISSUE_KIND_LABEL, Issue } from '@/core/validator';
+import { weatherOn } from '@/core/weather';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
 export default function ItineraryScreen() {
-  const { trip, catalog, openIssues, selectedDay, setSelectedDay, validator, palette: p } = useRotta();
+  const { trip, record, catalog, openIssues, selectedDay, setSelectedDay, validator, weatherStatus, refreshWeather, toggleRain, palette: p } =
+    useRotta();
+  useFocusEffect(
+    useCallback(() => {
+      refreshWeather();
+    }, [refreshWeather]),
+  );
   const day = trip.days[selectedDay];
   const stops = sortStops(day.stops);
   const dayIssues = openIssues.filter((i) => i.dayIndex === selectedDay);
   const legs = stops.slice(1).map((s, i) => legBetween(catalog.get(stops[i].placeId).location, catalog.get(s.placeId).location));
   const totalKm = legs.reduce((sum, l) => sum + (l?.distanceKm ?? 0), 0);
+  const forecast = weatherOn(record.weather, day.date);
   const addStop = () => router.push({ pathname: '/parada', params: { day: String(selectedDay) } });
 
   return (
@@ -68,6 +77,12 @@ export default function ItineraryScreen() {
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <WeatherStatusBar
+          trip={trip}
+          status={weatherStatus}
+          cache={record.weather}
+          onRefresh={() => refreshWeather({ force: true })}
+        />
         <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
@@ -78,8 +93,25 @@ export default function ItineraryScreen() {
                 {day.title}
               </Txt>
             </View>
-            {day.rainExpected && <Badge label="Chuva prevista" bg="#DCE7F5" fg="#1F3B63" />}
+            {forecast ? (
+              day.rainExpected && <Badge label="Chuva prevista" bg="#DCE7F5" fg="#1F3B63" />
+            ) : (
+              <Pressable
+                onPress={() => toggleRain(selectedDay)}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: day.rainExpected }}
+                accessibilityLabel="Chuva neste dia"
+                hitSlop={8}
+                style={[styles.rainToggle, day.rainExpected && { backgroundColor: '#DCE7F5', borderColor: '#DCE7F5' }]}
+              >
+                <Ionicons name={day.rainExpected ? 'rainy' : 'rainy-outline'} size={16} color={day.rainExpected ? '#1F3B63' : colors.muted} />
+                <Txt size={12} weight="semibold" color={day.rainExpected ? '#1F3B63' : colors.muted}>
+                  {day.rainExpected ? 'Chuva marcada' : 'Marcar chuva'}
+                </Txt>
+              </Pressable>
+            )}
           </View>
+          {forecast && <DayWeatherLine weather={forecast} />}
           <View style={styles.statsRow}>
             <Stat value={String(stops.length)} label="paradas" />
             <Stat value={legs.some(Boolean) ? formatDistance(totalKm) : '–'} label="entre paradas" />
@@ -202,6 +234,16 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingBottom: 120 },
   statsRow: { flexDirection: 'row', gap: 18, marginTop: 10 },
   leg: { marginLeft: 64, marginVertical: 6 },
+  rainToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   addStop: {
     marginTop: 14,
     height: 52,

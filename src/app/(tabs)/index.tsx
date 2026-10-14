@@ -9,6 +9,8 @@ import { checklistProgress } from '@/core/checklist';
 import { againstBudget } from '@/core/cost';
 import { formatBrl } from '@/core/format';
 import { stopCount, tripRangeLabel } from '@/core/model';
+import { packingProgress } from '@/core/packing';
+import { weatherOn } from '@/core/weather';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
@@ -18,6 +20,12 @@ export default function TripsScreen() {
   const alerts = openIssues.length;
   const checklist = checklistProgress(record.checklist);
   const spent = record.expenses.reduce((s, e) => s + e.amountBrl, 0);
+  const packing = packingProgress(record.packing);
+  const forecasts = trip.days.map((d) => weatherOn(record.weather, d.date)).filter((w) => !!w);
+  const weatherValue =
+    forecasts.length > 0
+      ? `${Math.min(...forecasts.map((w) => w!.minC))}° a ${Math.max(...forecasts.map((w) => w!.maxC))}°`
+      : 'Ver';
   const others = data.trips.filter((r) => r.trip.id !== trip.id);
 
   return (
@@ -89,6 +97,21 @@ export default function TripsScreen() {
             label="Gastos"
             value={formatBrl(spent)}
             onPress={() => router.navigate({ pathname: '/custos', params: { aba: 'gastos' } })}
+          />
+        </View>
+        <View style={styles.shortcuts}>
+          <Shortcut
+            icon="briefcase-outline"
+            label="Mala"
+            value={record.packing.length ? `${packing.done}/${packing.total}` : 'Montar'}
+            onPress={() => router.push('/mala')}
+          />
+          <Shortcut icon="medkit-outline" label="Emergência" value="SOS" onPress={() => router.push('/sos')} />
+          <Shortcut
+            icon="partly-sunny-outline"
+            label="Clima"
+            value={weatherValue}
+            onPress={() => router.navigate('/roteiro')}
           />
         </View>
 

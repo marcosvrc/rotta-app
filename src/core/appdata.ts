@@ -1,8 +1,11 @@
 import { ChecklistItem, defaultChecklist } from './checklist';
 import { Expense } from './expenses';
+import { PackingItem } from './packing';
+import { SosInfo } from './sos';
+import { GeoPlace, WeatherCache } from './weather';
 import { Trip } from './model';
 import { Reservation } from './reservations';
-import { lisboaChecklist, lisboaExpenses, lisboaReservations, lisboaTrip } from './sample/lisboa';
+import { lisboaChecklist, lisboaExpenses, lisboaGeo, lisboaReservations, lisboaSos, lisboaTrip } from './sample/lisboa';
 
 /** Tudo que o app guarda de uma viagem. */
 export interface TripRecord {
@@ -12,6 +15,12 @@ export interface TripRecord {
   checklist: ChecklistItem[];
   /** Alertas que o usuário escolheu manter como estavam. */
   dismissed: string[];
+  packing: PackingItem[];
+  sos: SosInfo;
+  /** Destino localizado, para clima e números de emergência. */
+  geo?: GeoPlace;
+  /** Última previsão do tempo consultada, guardada para uso offline. */
+  weather?: WeatherCache;
 }
 
 export interface Settings {
@@ -41,6 +50,9 @@ export function sampleAppData(): AppData {
         reservations: lisboaReservations(),
         checklist: lisboaChecklist(),
         dismissed: [],
+        packing: [],
+        sos: lisboaSos(),
+        geo: lisboaGeo(),
       },
     ],
     settings: DEFAULT_SETTINGS,
@@ -54,10 +66,59 @@ export function parseAppData(json: string | null): AppData | null {
     const data = JSON.parse(json) as Partial<AppData>;
     if (data.version !== 1 || !Array.isArray(data.trips) || data.trips.length === 0) return null;
     if (!data.trips.some((r) => r?.trip?.id === data.activeTripId)) return null;
-    return { ...(data as AppData), settings: { ...DEFAULT_SETTINGS, ...data.settings } };
+    const trips = (data.trips as Partial<TripRecord>[]).map(migrateRecord);
+    return { ...(data as AppData), trips, settings: { ...DEFAULT_SETTINGS, ...data.settings } };
   } catch {
     return null;
   }
+}
+
+/** Completa registros salvos por versões anteriores do app com os campos novos. */
+function migrateRecord(r: Partial<TripRecord>): TripRecord {
+  return {
+    trip: r.trip!,
+    expenses: r.expenses ?? [],
+    reservations: r.reservations ?? [],
+    checklist: r.checklist ?? [],
+    dismissed: r.dismissed ?? [],
+    packing: r.packing ?? [],
+    sos: r.sos ?? {},
+    geo: r.geo,
+    weather: r.weather,
+  };
+}
+
+export function emptyRecord(trip: Trip): TripRecord {
+  return { trip, expenses: [], reservations: [], checklist: defaultChecklist(), dismissed: [], packing: [], sos: {} };
+}
+
+const BACKUP_APP = 'rotta';
+
+/**
+ * Gera o arquivo de backup. Anexos ficam de fora: são arquivos do aparelho e não cabem no backup.
+ */
+export function exportBackup(data: AppData, now: Date): string {
+  const trips = data.trips.map((r) => ({
+    ...r,
+    reservations: r.reservations.map(({ attachment: _attachment, ...rest }) => rest),
+  }));
+  return JSON.stringify({ app: BACKUP_APP, exportedAt: now.toISOString(), data: { ...data, trips } }, null, 2);
+}
+
+/** Lê um backup. Devolve null se o arquivo não for um backup válido do Rotta. */
+export function parseBackup(text: string): AppData | null {
+  try {
+    const parsed = JSON.parse(text) as { app?: string; data?: unknown };
+    if (parsed?.app !== BACKUP_APP || !parsed.data) return null;
+    return parseAppData(JSON.stringify(parsed.data));
+  } catch {
+    return null;
+  }
+}
+
+export function backupFileName(now: Date): string {
+  const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return `rotta-backup-${d}.json`;
 }
 
 export function activeRecord(data: AppData): TripRecord {
@@ -69,8 +130,7 @@ export function updateRecord(data: AppData, tripId: string, fn: (r: TripRecord) 
 }
 
 export function addTrip(data: AppData, trip: Trip): AppData {
-  const record: TripRecord = { trip, expenses: [], reservations: [], checklist: defaultChecklist(), dismissed: [] };
-  return { ...data, trips: [...data.trips, record], activeTripId: trip.id };
+  return { ...data, trips: [...data.trips, emptyRecord(trip)], activeTripId: trip.id };
 }
 
 /** Remove a viagem. A última viagem não pode ser removida. */

@@ -49,6 +49,8 @@ function AppStack() {
         <Stack.Screen name="reserva" />
         <Stack.Screen name="anexo" />
         <Stack.Screen name="checklist" />
+        <Stack.Screen name="mala" />
+        <Stack.Screen name="sos" />
       </Stack>
     </>
   );

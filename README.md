@@ -56,6 +56,10 @@ npm run typecheck   # checagem de tipos
 - Registro de gastos com gráficos por dia (comparando com o previsto), por categoria e por forma de pagamento.
 - Reservas com código e anexo de ingresso, QR code ou PDF, que abrem sem internet.
 - Checklist pré-viagem com prazos contados a partir da data de ida.
+- Previsão do tempo real (Open-Meteo) nos dias que estão a até 16 dias; os dias chuvosos alimentam o validador. Antes disso, dá para marcar a chuva à mão.
+- Lista de mala sugerida pelos dias, clima, praia no roteiro e destino, com itens próprios.
+- SOS com números de emergência do país e contatos da viagem (hospedagem, seguro, consulado), com toque para ligar.
+- Backup em arquivo para trocar de celular (os anexos não entram no backup).
 - Troca da cor de destaque do app.
 
 Tudo fica salvo no aparelho e funciona offline. Horários de funcionamento e preços ainda são de exemplo. Os próximos passos são as APIs do Google Maps, o backend (Firebase) com login e a IA.

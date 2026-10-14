@@ -17,9 +17,13 @@ import { CostEstimate, estimateCost } from '@/core/cost';
 import { makeId } from '@/core/editing';
 import { Expense } from '@/core/expenses';
 import { PlaceCatalog, Trip, catalogOf, nightsOf } from '@/core/model';
+import { mergePacking, suggestPacking } from '@/core/packing';
 import { Reservation } from '@/core/reservations';
+import { SosInfo, countryCodeOf, isInternational } from '@/core/sos';
+import { applyForecast, isStale, mergeForecast, temperatureRange } from '@/core/weather';
 import { Issue, ItineraryValidator, ValidationReport } from '@/core/validator';
 import { deleteAllAttachments, deleteAttachment } from '@/state/files';
+import { fetchForecast, locateDestination } from '@/state/weather';
 import { ACCENT_OPTIONS, AccentId, AccentPalette, paletteFor } from '@/theme';
 
 const STORAGE_KEY = 'rotta:dados:v1';
@@ -41,6 +45,7 @@ interface RottaState {
   interests: Set<string>;
   selectedDay: number;
   lastApplied: string | null;
+  weatherStatus: WeatherStatus;
 
   setSelectedDay: (day: number) => void;
   clearLastApplied: () => void;
@@ -60,7 +65,17 @@ interface RottaState {
   setAccentId: (id: AccentId) => void;
   toggleInterest: (name: string) => void;
   resetToSample: () => void;
+  refreshWeather: (opts?: { force?: boolean }) => Promise<void>;
+  toggleRain: (dayIndex: number) => void;
+  refreshPacking: () => void;
+  togglePackingItem: (id: string) => void;
+  addPackingItem: (title: string) => void;
+  removePackingItem: (id: string) => void;
+  updateSos: (info: SosInfo) => void;
+  replaceData: (data: AppData) => void;
 }
+
+export type WeatherStatus = 'idle' | 'loading' | 'ok' | 'sem-conexao' | 'nao-encontrado' | 'fora-da-janela';
 
 const RottaContext = createContext<RottaState | null>(null);
 
@@ -75,6 +90,7 @@ export function RottaProvider({ children }: { children: ReactNode }) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [selectedDay, setSelectedDay] = useState(0);
   const [lastApplied, setLastApplied] = useState<string | null>(null);
+  const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>('idle');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Carrega o que estiver salvo; se não houver nada, começa com a viagem de exemplo.
@@ -131,6 +147,56 @@ export function RottaProvider({ children }: { children: ReactNode }) {
 
   const clearLastApplied = useCallback(() => setLastApplied(null), []);
 
+  // Sempre lê o registro atual, para a busca de clima não usar dados antigos.
+  const recordRef = useRef(record);
+  useEffect(() => {
+    recordRef.current = record;
+  }, [record]);
+  const loadingWeather = useRef(false);
+
+  const refreshWeather = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      const current = recordRef.current;
+      if (loadingWeather.current) return;
+      if (!force && !isStale(current.weather, new Date()) && current.geo) return;
+      loadingWeather.current = true;
+      setWeatherStatus('loading');
+      try {
+        const geo = current.geo ?? (await locateDestination(current.trip));
+        if (!geo) {
+          setWeatherStatus('nao-encontrado');
+          return;
+        }
+        const result = await fetchForecast(current.trip, geo);
+        const tripId = current.trip.id;
+        setData((d) =>
+          updateRecord(d, tripId, (r) => {
+            if (result.kind !== 'ok') return { ...r, geo };
+            return {
+              ...r,
+              geo,
+              weather: mergeForecast(r.weather, result.days, new Date()),
+              trip: applyForecast(r.trip, result.days),
+            };
+          }),
+        );
+        setWeatherStatus(result.kind === 'ok' ? 'ok' : 'fora-da-janela');
+      } catch {
+        setWeatherStatus('sem-conexao');
+      } finally {
+        loadingWeather.current = false;
+      }
+    },
+    [],
+  );
+
+  // Ao trocar de viagem, o estado da busca de clima recomeça.
+  const [weatherTripId, setWeatherTripId] = useState(record.trip.id);
+  if (weatherTripId !== record.trip.id) {
+    setWeatherTripId(record.trip.id);
+    setWeatherStatus('idle');
+  }
+
   const value: RottaState = {
     ready,
     lastSavedAt,
@@ -148,10 +214,18 @@ export function RottaProvider({ children }: { children: ReactNode }) {
     interests,
     selectedDay: Math.min(selectedDay, trip.days.length - 1),
     lastApplied,
+    weatherStatus,
 
     setSelectedDay,
     clearLastApplied,
-    updateTrip: (fn) => updateActive((r) => clampExpenseDays({ ...r, trip: fn(r.trip) })),
+    updateTrip: (fn) =>
+      updateActive((r) => {
+        const trip = fn(r.trip);
+        const moved = trip.destination !== r.trip.destination || trip.country !== r.trip.country;
+        // Destino novo: a localização e a previsão antigas deixam de valer.
+        const next = moved ? { ...r, trip, geo: undefined, weather: undefined } : { ...r, trip };
+        return clampExpenseDays(next);
+      }),
     applyFix: (issue) => {
       if (!issue.fix) return;
       const fix = issue.fix;
@@ -206,6 +280,39 @@ export function RottaProvider({ children }: { children: ReactNode }) {
       deleteAllAttachments();
       setData(sampleAppData());
       setSelectedDay(1);
+      setLastApplied(null);
+    },
+    refreshWeather,
+    toggleRain: (dayIndex) =>
+      updateActive((r) => ({
+        ...r,
+        trip: { ...r.trip, days: r.trip.days.map((d, i) => (i === dayIndex ? { ...d, rainExpected: !d.rainExpected } : d)) },
+      })),
+    refreshPacking: () =>
+      updateActive((r) => {
+        const code = countryCodeOf(r.trip.country, r.geo?.countryCode);
+        const suggestions = suggestPacking({
+          days: r.trip.days.length,
+          rainyDays: r.trip.days.filter((d) => d.rainExpected).length,
+          temperature: temperatureRange(r.weather, r.trip),
+          international: isInternational(code),
+          beach: r.trip.days.some((d) => d.stops.some((s) => r.trip.places.find((p) => p.id === s.placeId)?.kind === 'Praia')),
+        });
+        return { ...r, packing: mergePacking(r.packing, suggestions) };
+      }),
+    togglePackingItem: (id) =>
+      updateActive((r) => ({ ...r, packing: r.packing.map((i) => (i.id === id ? { ...i, done: !i.done } : i)) })),
+    addPackingItem: (title) =>
+      updateActive((r) => ({
+        ...r,
+        packing: [...r.packing, { id: makeId('mala'), category: 'OUTROS', title: title.trim(), done: false, custom: true }],
+      })),
+    removePackingItem: (id) => updateActive((r) => ({ ...r, packing: r.packing.filter((i) => i.id !== id) })),
+    updateSos: (info) => updateActive((r) => ({ ...r, sos: info })),
+    replaceData: (next) => {
+      deleteAllAttachments();
+      setData(next);
+      setSelectedDay(0);
       setLastApplied(null);
     },
   };

@@ -1,3 +1,5 @@
+import type { SosInfo } from '../sos';
+import type { GeoPlace } from '../weather';
 import { MINUTES_IN_DAY, hm, plusDays, tripDate } from '../calendar';
 import { ChecklistItem, defaultChecklist } from '../checklist';
 import { Expense } from '../expenses';
@@ -336,4 +338,24 @@ export function lisboaReservations(): Reservation[] {
 export function lisboaChecklist(): ChecklistItem[] {
   const done = new Set([0, 3, 4]);
   return defaultChecklist((i) => `c${i + 1}`).map((item, i) => ({ ...item, done: done.has(i) }));
+}
+
+export function lisboaGeo(): GeoPlace {
+  return {
+    name: 'Lisboa',
+    country: 'Portugal',
+    countryCode: 'PT',
+    admin1: 'Lisboa',
+    latitude: 38.72509,
+    longitude: -9.1498,
+    timezone: 'Europe/Lisbon',
+  };
+}
+
+export function lisboaSos(): SosInfo {
+  return {
+    stayAddress: 'Rua de São Tomé 12, Alfama, Lisboa',
+    insuranceName: 'Seguro viagem (exemplo)',
+    insurancePolicy: 'APL-000000',
+  };
 }
