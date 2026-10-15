@@ -60,6 +60,8 @@ function AppStack() {
         <Stack.Screen name="guia" />
         <Stack.Screen name="sugerir" />
         <Stack.Screen name="divisao" />
+        <Stack.Screen name="compartilhar" />
+        <Stack.Screen name="trocar-dia" />
       </Stack>
     </>
   );

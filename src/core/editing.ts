@@ -152,3 +152,35 @@ export function suggestStart(day: DayPlan): Minutes {
 function removeStopEverywhere(trip: Trip, placeId: string): Trip {
   return { ...trip, days: trip.days.map((d) => ({ ...d, stops: d.stops.filter((s) => s.placeId !== placeId) })) };
 }
+
+/**
+ * Troca uma parada de lugar com a vizinha (antes ou depois), mantendo o intervalo que havia entre elas.
+ * A primeira das duas começa no horário em que a dupla começava; o validador confere o resto do dia.
+ */
+export function moveStopInDay(trip: Trip, dayIndex: number, placeId: string, direction: -1 | 1): Trip {
+  return updateDay(trip, dayIndex, (day) => {
+    const stops = sortStops(day.stops);
+    const i = stops.findIndex((s) => s.placeId === placeId);
+    const j = i + direction;
+    if (i === -1 || j < 0 || j >= stops.length) return day;
+    const [first, second] = i < j ? [stops[i], stops[j]] : [stops[j], stops[i]];
+    const gap = Math.max(0, second.start - (first.start + first.durationMinutes));
+    const newFirst = { ...second, start: first.start };
+    const newSecond = { ...first, start: Math.ceil((first.start + second.durationMinutes + gap) / 5) * 5 };
+    const next = stops.map((s) => (s === first ? newFirst : s === second ? newSecond : s));
+    return { ...day, stops: sortStops(next) };
+  });
+}
+
+/** Troca os programas de dois dias (título e paradas). Datas, janela livre e chuva ficam com cada data. */
+export function swapDays(trip: Trip, a: number, b: number): Trip {
+  if (a === b || !trip.days[a] || !trip.days[b]) return trip;
+  const da = trip.days[a];
+  const db = trip.days[b];
+  return {
+    ...trip,
+    days: trip.days.map((d, i) =>
+      i === a ? { ...d, title: db.title, stops: db.stops } : i === b ? { ...d, title: da.title, stops: da.stops } : d,
+    ),
+  };
+}

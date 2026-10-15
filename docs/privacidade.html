@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacidade do Rotta</title>
+<link rel="stylesheet" href="_pagina.css">
+</head>
+<body>
+<main>
+  <h1>Política de privacidade do Rotta</h1>
+  <p class="sub">Última atualização: 15 de outubro de 2026</p>
+
+  <p>O Rotta é um app de planejamento de viagens. Esta página explica quais dados o app usa, para quê, com quem eles são compartilhados e como você pode apagá-los. Ela segue a Lei Geral de Proteção de Dados (LGPD).</p>
+
+  <h2>1. O que fica só no seu celular</h2>
+  <p>Viagens, roteiros, gastos, reservas, anexos (ingressos, QR codes, PDFs), checklist, lista de mala e contatos de emergência (SOS) ficam guardados no armazenamento do app, no seu aparelho. Sem conta, nada disso sai do celular.</p>
+  <p>Os lembretes são agendados no próprio aparelho e não passam por nenhum servidor.</p>
+
+  <h2>2. Conta e sincronização (opcional)</h2>
+  <p>Se você criar uma conta, usamos o <b>Firebase Authentication</b> (Google) para o login com e-mail e senha. A senha é guardada pelo Google; o Rotta não tem acesso a ela.</p>
+  <p>Com a conta, as suas viagens (roteiro, gastos, reservas, checklist, mala e contatos do SOS) são copiadas para o <b>Cloud Firestore</b> (Google), em servidores na região de São Paulo, para aparecerem em outro celular. <b>Anexos não sobem para a nuvem.</b> Cada conta só consegue ler os próprios dados.</p>
+
+  <h2>3. Inteligência artificial (quando você pede)</h2>
+  <p>Ao usar um recurso de IA (explicar um alerta, gerar o guia do destino, buscar a história de um lugar ou sugerir paradas), o app envia ao nosso servidor (Cloud Functions, Google) só o necessário para aquele pedido: o destino, o país, o dia, os nomes dos lugares do roteiro, o ritmo, os interesses marcados e o texto do alerta. Esse conteúdo é enviado ao <b>OpenRouter</b>, que o repassa ao provedor do modelo de IA (por exemplo, a Anthropic). Seu e-mail não é enviado.</p>
+  <p>Para escrever guias e histórias, o servidor consulta a <b>Wikipedia</b> e o <b>Wikivoyage</b> com o nome do destino ou do lugar.</p>
+  <p>Guardamos, por conta e por dia, quantos pedidos foram feitos e quanto custaram, para aplicar o limite diário e controlar custos. Guias e histórias gerados ficam em cache por destino ou lugar, sem ligação com quem pediu.</p>
+
+  <h2>4. Clima e câmbio</h2>
+  <p>Para a previsão do tempo, o app envia o nome e as coordenadas do destino ao <b>Open-Meteo</b>. Para converter gastos, envia o código da moeda (por exemplo, EUR) ao <b>Frankfurter</b>. Nenhum dado seu vai junto.</p>
+
+  <h2>5. O que não fazemos</h2>
+  <ul>
+    <li>Não mostramos anúncios.</li>
+    <li>Não usamos ferramentas de análise de uso nem rastreamento entre apps.</li>
+    <li>Não vendemos nem alugamos dados.</li>
+    <li>Não usamos a sua localização.</li>
+  </ul>
+
+  <h2>6. Por quanto tempo</h2>
+  <p>Os dados da conta ficam guardados enquanto a conta existir. Registros técnicos do servidor, que podem conter o identificador da conta, são apagados automaticamente em até 30 dias.</p>
+
+  <h2>7. Seus direitos</h2>
+  <p>Você pode, a qualquer momento:</p>
+  <ul>
+    <li><b>Ver e corrigir</b> seus dados no próprio app;</li>
+    <li><b>Levar seus dados</b> com você: Ajustes &gt; Dados no aparelho &gt; Fazer backup gera um arquivo com tudo;</li>
+    <li><b>Excluir sua conta e todos os dados</b>: veja <a href="excluir-conta.html">como excluir</a>.</li>
+  </ul>
+
+  <h2>8. Crianças</h2>
+  <p>O Rotta não é direcionado a menores de 13 anos.</p>
+
+  <h2>9. Contato</h2>
+  <p>Dúvidas ou pedidos sobre seus dados: <b>[E-MAIL DE CONTATO]</b>.</p>
+
+  <h2>10. Mudanças nesta política</h2>
+  <p>Se esta política mudar, a data no topo será atualizada e, se a mudança for importante, avisaremos no app.</p>
+
+  <footer>Rotta · <a href="index.html">Início</a></footer>
+</main>
+</body>
+</html>

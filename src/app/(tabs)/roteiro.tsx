@@ -37,7 +37,20 @@ export default function ItineraryScreen() {
       <ScreenHeader
         title={trip.destination}
         subtitle={tripRangeLabel(trip)}
-        right={<AlertsChip issues={openIssues} />}
+        right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={() => router.push('/compartilhar')}
+              accessibilityRole="button"
+              accessibilityLabel="Compartilhar roteiro"
+              hitSlop={6}
+              style={styles.share}
+            >
+              <Ionicons name="share-social-outline" size={20} color={colors.ink} />
+            </Pressable>
+            <AlertsChip issues={openIssues} />
+          </View>
+        }
       />
 
       <ScrollView
@@ -112,6 +125,18 @@ export default function ItineraryScreen() {
             )}
           </View>
           {forecast && <DayWeatherLine weather={forecast} />}
+          {trip.days.length > 1 && (
+            <Pressable
+              onPress={() => router.push({ pathname: '/trocar-dia', params: { day: String(selectedDay) } })}
+              accessibilityRole="button"
+              hitSlop={6}
+              style={{ alignSelf: 'flex-start', paddingVertical: 8 }}
+            >
+              <Txt size={13} weight="semibold" color={p.accent}>
+                Trocar este dia com outro
+              </Txt>
+            </Pressable>
+          )}
           <View style={styles.statsRow}>
             <Stat value={String(stops.length)} label="paradas" />
             <Stat value={legs.some(Boolean) ? formatDistance(totalKm) : '–'} label="entre paradas" />
@@ -253,6 +278,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  share: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
   rainToggle: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card, ErrorBox, FormScreen, PrimaryButton, ScreenHeader, Segmented, TextField, Txt, confirmAction } from '@/components/ui';
 import { AuthMode, validateCredentials } from '@/core/account';
+import { PRIVACY_URL } from '@/core/legal';
 import { SyncStatus, useAccount } from '@/state/account';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
@@ -131,6 +132,11 @@ function SignInForm() {
         Ao entrar, as viagens deste aparelho sobem para a sua conta e as da conta aparecem aqui. Anexos de reservas ficam só no
         aparelho onde foram adicionados.
       </Txt>
+      <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityRole="link" style={{ paddingVertical: 6 }}>
+        <Txt size={13} weight="semibold" color={colors.body}>
+          Política de privacidade
+        </Txt>
+      </Pressable>
     </FormScreen>
   );
 }

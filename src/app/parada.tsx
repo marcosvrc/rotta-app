@@ -7,6 +7,7 @@ import { parseTime, shortDateLabel, timeLabel } from '@/core/calendar';
 import {
   addStop,
   createCustomPlace,
+  moveStopInDay,
   removeStop,
   suggestStart,
   unscheduledPlaces,
@@ -14,7 +15,7 @@ import {
   validateStop,
 } from '@/core/editing';
 import { formatDuration } from '@/core/format';
-import { PLACE_KINDS, PlaceKind, dayIndexOf } from '@/core/model';
+import { PLACE_KINDS, PlaceKind, dayIndexOf, sortStops } from '@/core/model';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
@@ -52,6 +53,17 @@ export default function StopFormScreen() {
   const [errors, setErrors] = useState<string[]>([]);
 
   const picked = fixedPlace ?? suggestions.find((p) => p.id === pickedId);
+  const dayStops = editing ? sortStops(trip.days[scheduledDay].stops) : [];
+  const position = editing ? dayStops.findIndex((s) => s.placeId === fixedPlace!.id) : -1;
+  const reorder = (direction: -1 | 1) => {
+    if (!editing) return;
+    const target = position + direction;
+    if (target < 0 || target >= dayStops.length) return;
+    const next = moveStopInDay(trip, scheduledDay, fixedPlace!.id, direction);
+    updateTrip(() => next);
+    const moved = next.days[scheduledDay].stops.find((s) => s.placeId === fixedPlace!.id);
+    if (moved) setTime(timeLabel(moved.start));
+  };
 
   const changeDay = (d: number) => {
     setDayIndex(d);
@@ -146,6 +158,26 @@ export default function StopFormScreen() {
             </>
           )}
         </>
+      )}
+
+      {editing && dayStops.length > 1 && (
+        <View style={{ gap: 6 }}>
+          <Txt weight="semibold" size={13} color={colors.muted}>
+            {`Ordem no dia: ${position + 1}ª de ${dayStops.length}`}
+          </Txt>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <PrimaryButton label="↑ Antes" filled={false} onPress={() => reorder(-1)} style={{ flex: 1, opacity: position === 0 ? 0.4 : 1 }} />
+            <PrimaryButton
+              label="Depois ↓"
+              filled={false}
+              onPress={() => reorder(1)}
+              style={{ flex: 1, opacity: position === dayStops.length - 1 ? 0.4 : 1 }}
+            />
+          </View>
+          <Txt size={12} color={colors.muted}>
+            Troca na hora com a parada vizinha, mantendo o intervalo entre elas.
+          </Txt>
+        </View>
       )}
 
       <ChoiceChips<number>
