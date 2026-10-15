@@ -1,10 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, PrimaryButton, ScreenHeader, SectionTitle, Segmented, ToggleChip, Txt, confirmAction } from '@/components/ui';
+import { Card, ListRow, PrimaryButton, ScreenHeader, SectionTitle, Segmented, ToggleChip, Txt, confirmAction } from '@/components/ui';
 import { PACES, Pace } from '@/core/model';
+import { useAccount } from '@/state/account';
 import { pickBackup, shareBackup } from '@/state/backup';
 import { useRotta } from '@/state/rotta';
 import { ACCENT_OPTIONS, colors } from '@/theme';
@@ -13,6 +15,7 @@ const INTERESTS = ['História', 'Gastronomia', 'Natureza', 'Praia', 'Vida noturn
 
 export default function SettingsScreen() {
   const { accentId, setAccentId, trip, updateTrip, interests, toggleInterest, data, lastSavedAt, resetToSample, replaceData } = useRotta();
+  const account = useAccount();
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
 
   const exportData = async () => {
@@ -108,6 +111,22 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
+        <SectionTitle>Conta e nuvem</SectionTitle>
+        <Card padding={0}>
+          <ListRow
+            icon={account.email ? 'cloud-done-outline' : 'person-circle-outline'}
+            title={account.email ?? (account.configured ? 'Entrar ou criar conta' : 'Conta')}
+            subtitle={
+              !account.configured
+                ? 'Nuvem ainda não configurada nesta versão'
+                : account.email
+                  ? 'Viagens sincronizadas com a nuvem'
+                  : 'Veja suas viagens em outro celular'
+            }
+            onPress={() => router.push('/conta')}
+          />
+        </Card>
+
         <SectionTitle>Dados no aparelho</SectionTitle>
         <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -129,7 +148,9 @@ export default function SettingsScreen() {
             {`${data.trips.length} ${data.trips.length === 1 ? 'viagem' : 'viagens'} · ${reservations} ${reservations === 1 ? 'reserva' : 'reservas'} · ${attachments} ${attachments === 1 ? 'anexo' : 'anexos'}`}
           </Txt>
           <Txt size={12} color={colors.muted} style={{ marginTop: 4 }}>
-            Roteiros, gastos, reservas e ingressos ficam guardados só neste aparelho. Faça um backup antes de trocar de celular.
+            {account.email
+              ? 'Roteiros, gastos e reservas ficam neste aparelho e na sua conta. Anexos ficam só aqui.'
+              : 'Roteiros, gastos, reservas e ingressos ficam guardados só neste aparelho. Faça um backup antes de trocar de celular.'}
           </Txt>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
             <PrimaryButton label="Fazer backup" filled={false} onPress={exportData} style={{ flex: 1 }} />
@@ -158,7 +179,7 @@ export default function SettingsScreen() {
         <SectionTitle>Sobre</SectionTitle>
         <Card>
           <Txt weight="semibold" size={15}>
-            Rotta 0.3.0
+            Rotta 0.4.0
           </Txt>
           <Txt size={13} color={colors.muted}>
             Versão de testes. Mapas, login e IA chegam nas próximas etapas.

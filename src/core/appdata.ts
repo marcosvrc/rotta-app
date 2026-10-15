@@ -21,6 +21,14 @@ export interface TripRecord {
   geo?: GeoPlace;
   /** Última previsão do tempo consultada, guardada para uso offline. */
   weather?: WeatherCache;
+  /** Momento da última mudança (ms desde 1970), usado na sincronização com a nuvem. */
+  updatedAt: number;
+}
+
+/** Viagem apagada neste aparelho e que ainda precisa ser apagada na nuvem. */
+export interface Tombstone {
+  id: string;
+  at: number;
 }
 
 export interface Settings {
@@ -34,6 +42,7 @@ export interface AppData {
   activeTripId: string;
   trips: TripRecord[];
   settings: Settings;
+  tombstones: Tombstone[];
 }
 
 export const DEFAULT_SETTINGS: Settings = { accentId: 'azul', interests: ['História', 'Gastronomia'] };
@@ -53,9 +62,11 @@ export function sampleAppData(): AppData {
         packing: [],
         sos: lisboaSos(),
         geo: lisboaGeo(),
+        updatedAt: 0,
       },
     ],
     settings: DEFAULT_SETTINGS,
+    tombstones: [],
   };
 }
 
@@ -67,7 +78,12 @@ export function parseAppData(json: string | null): AppData | null {
     if (data.version !== 1 || !Array.isArray(data.trips) || data.trips.length === 0) return null;
     if (!data.trips.some((r) => r?.trip?.id === data.activeTripId)) return null;
     const trips = (data.trips as Partial<TripRecord>[]).map(migrateRecord);
-    return { ...(data as AppData), trips, settings: { ...DEFAULT_SETTINGS, ...data.settings } };
+    return {
+      ...(data as AppData),
+      trips,
+      settings: { ...DEFAULT_SETTINGS, ...data.settings },
+      tombstones: Array.isArray(data.tombstones) ? data.tombstones : [],
+    };
   } catch {
     return null;
   }
@@ -85,11 +101,21 @@ function migrateRecord(r: Partial<TripRecord>): TripRecord {
     sos: r.sos ?? {},
     geo: r.geo,
     weather: r.weather,
+    updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : 0,
   };
 }
 
-export function emptyRecord(trip: Trip): TripRecord {
-  return { trip, expenses: [], reservations: [], checklist: defaultChecklist(), dismissed: [], packing: [], sos: {} };
+export function emptyRecord(trip: Trip, now = 0): TripRecord {
+  return {
+    trip,
+    expenses: [],
+    reservations: [],
+    checklist: defaultChecklist(),
+    dismissed: [],
+    packing: [],
+    sos: {},
+    updatedAt: now,
+  };
 }
 
 const BACKUP_APP = 'rotta';
@@ -102,7 +128,7 @@ export function exportBackup(data: AppData, now: Date): string {
     ...r,
     reservations: r.reservations.map(({ attachment: _attachment, ...rest }) => rest),
   }));
-  return JSON.stringify({ app: BACKUP_APP, exportedAt: now.toISOString(), data: { ...data, trips } }, null, 2);
+  return JSON.stringify({ app: BACKUP_APP, exportedAt: now.toISOString(), data: { ...data, trips, tombstones: [] } }, null, 2);
 }
 
 /** Lê um backup. Devolve null se o arquivo não for um backup válido do Rotta. */
@@ -125,20 +151,32 @@ export function activeRecord(data: AppData): TripRecord {
   return data.trips.find((r) => r.trip.id === data.activeTripId) ?? data.trips[0];
 }
 
-export function updateRecord(data: AppData, tripId: string, fn: (r: TripRecord) => TripRecord): AppData {
-  return { ...data, trips: data.trips.map((r) => (r.trip.id === tripId ? fn(r) : r)) };
+/**
+ * Aplica uma mudança na viagem. Com `now`, marca a hora para a sincronização saber o que é mais novo;
+ * sem ele (dados derivados, como a previsão do tempo), a hora não muda.
+ */
+export function updateRecord(data: AppData, tripId: string, fn: (r: TripRecord) => TripRecord, now?: number): AppData {
+  return {
+    ...data,
+    trips: data.trips.map((r) => {
+      if (r.trip.id !== tripId) return r;
+      const next = fn(r);
+      return now === undefined ? next : { ...next, updatedAt: now };
+    }),
+  };
 }
 
-export function addTrip(data: AppData, trip: Trip): AppData {
-  return { ...data, trips: [...data.trips, emptyRecord(trip)], activeTripId: trip.id };
+export function addTrip(data: AppData, trip: Trip, now = 0): AppData {
+  return { ...data, trips: [...data.trips, emptyRecord(trip, now)], activeTripId: trip.id };
 }
 
 /** Remove a viagem. A última viagem não pode ser removida. */
-export function deleteTrip(data: AppData, tripId: string): AppData {
+export function deleteTrip(data: AppData, tripId: string, now = 0): AppData {
   if (data.trips.length <= 1) return data;
   const trips = data.trips.filter((r) => r.trip.id !== tripId);
   const activeTripId = data.activeTripId === tripId ? trips[0].trip.id : data.activeTripId;
-  return { ...data, trips, activeTripId };
+  const tombstones = [...data.tombstones.filter((t) => t.id !== tripId), { id: tripId, at: now }];
+  return { ...data, trips, activeTripId, tombstones };
 }
 
 /** Dias de um gasto ou de um item que deixaram de existir quando a viagem encurtou. */

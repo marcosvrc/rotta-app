@@ -421,6 +421,7 @@ export function TextField({
   keyboardType,
   autoFocus,
   multiline,
+  secureTextEntry,
 }: {
   label: string;
   value: string;
@@ -430,9 +431,11 @@ export function TextField({
   keyboardType?: TextInputProps['keyboardType'];
   autoFocus?: boolean;
   multiline?: boolean;
+  secureTextEntry?: boolean;
 }) {
   const p = usePalette();
   const [focused, setFocused] = useState(false);
+  const plain = secureTextEntry || keyboardType === 'email-address';
   return (
     <View style={{ gap: 6 }}>
       <Txt weight="semibold" size={13} color={colors.muted}>
@@ -446,6 +449,10 @@ export function TextField({
         keyboardType={keyboardType}
         autoFocus={autoFocus}
         multiline={multiline}
+        secureTextEntry={secureTextEntry}
+        autoCapitalize={plain ? 'none' : undefined}
+        autoCorrect={plain ? false : undefined}
+        autoComplete={secureTextEntry ? 'password' : keyboardType === 'email-address' ? 'email' : undefined}
         accessibilityLabel={label}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

@@ -60,8 +60,21 @@ npm run typecheck   # checagem de tipos
 - Lista de mala sugerida pelos dias, clima, praia no roteiro e destino, com itens próprios.
 - SOS com números de emergência do país e contatos da viagem (hospedagem, seguro, consulado), com toque para ligar.
 - Backup em arquivo para trocar de celular (os anexos não entram no backup).
+- Conta com e-mail e senha (Firebase) e sincronização das viagens entre aparelhos. Sem o Firebase configurado, o app funciona só no aparelho.
 - Troca da cor de destaque do app.
 
 Tudo fica salvo no aparelho e funciona offline. Horários de funcionamento e preços ainda são de exemplo. Os próximos passos são as APIs do Google Maps, o backend (Firebase) com login e a IA.
+
+## Ligar a nuvem (Firebase)
+
+1. Crie um projeto em https://console.firebase.google.com (o plano gratuito Spark basta para login e banco).
+2. Em **Authentication > Sign-in method**, ative **E-mail/senha**.
+3. Em **Firestore Database**, crie o banco em modo de produção.
+4. Publique as regras deste repositório: `npx firebase-tools login`, depois `npx firebase-tools deploy --only firestore:rules --project <id-do-projeto>`.
+5. Em **Configurações do projeto > Seus apps**, adicione um app **Web** e copie a configuração.
+6. Copie `.env.example` para `.env`, preencha e rode `npx expo start --clear`.
+7. Para o APK do CI, cadastre os mesmos valores em **GitHub > Settings > Secrets and variables > Actions**, com os nomes do `.env.example`.
+
+Para testar sem projeto real: `npx firebase-tools emulators:start --project demo-rotta` e, no `.env`, `EXPO_PUBLIC_FIREBASE_EMULATOR_HOST` com o IP do computador.
 
 A primeira versão, em Kotlin Multiplatform, está guardada na branch `kotlin-multiplatform`.

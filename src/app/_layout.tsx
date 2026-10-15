@@ -10,6 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { AccountProvider } from '@/state/account';
 import { RottaProvider, useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
@@ -20,7 +21,9 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
   return (
     <RottaProvider>
-      <AppStack />
+      <AccountProvider>
+        <AppStack />
+      </AccountProvider>
     </RottaProvider>
   );
 }
@@ -51,6 +54,7 @@ function AppStack() {
         <Stack.Screen name="checklist" />
         <Stack.Screen name="mala" />
         <Stack.Screen name="sos" />
+        <Stack.Screen name="conta" />
       </Stack>
     </>
   );

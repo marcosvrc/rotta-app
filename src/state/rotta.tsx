@@ -18,6 +18,7 @@ import { makeId } from '@/core/editing';
 import { Expense } from '@/core/expenses';
 import { PlaceCatalog, Trip, catalogOf, nightsOf } from '@/core/model';
 import { mergePacking, suggestPacking } from '@/core/packing';
+import { SyncPlan, applySync } from '@/core/sync';
 import { Reservation } from '@/core/reservations';
 import { SosInfo, countryCodeOf, isInternational } from '@/core/sos';
 import { applyForecast, isStale, mergeForecast, temperatureRange } from '@/core/weather';
@@ -73,6 +74,9 @@ interface RottaState {
   removePackingItem: (id: string) => void;
   updateSos: (info: SosInfo) => void;
   replaceData: (data: AppData) => void;
+  /** Dados mais recentes, para a sincronização ler sem esperar um novo render. */
+  getData: () => AppData;
+  applySyncPlan: (plan: SyncPlan) => void;
 }
 
 export type WeatherStatus = 'idle' | 'loading' | 'ok' | 'sem-conexao' | 'nao-encontrado' | 'fora-da-janela';
@@ -142,16 +146,23 @@ export function RottaProvider({ children }: { children: ReactNode }) {
   const interests = useMemo(() => new Set(data.settings.interests), [data.settings.interests]);
 
   const updateActive = useCallback((fn: (r: TripRecord) => TripRecord) => {
-    setData((d) => updateRecord(d, d.activeTripId, fn));
+    setData((d) => updateRecord(d, d.activeTripId, fn, Date.now()));
   }, []);
 
   const clearLastApplied = useCallback(() => setLastApplied(null), []);
 
   // Sempre lê o registro atual, para a busca de clima não usar dados antigos.
   const recordRef = useRef(record);
+  const dataRef = useRef(data);
   useEffect(() => {
     recordRef.current = record;
-  }, [record]);
+    dataRef.current = data;
+  }, [record, data]);
+  const getData = useCallback(() => dataRef.current, []);
+  const applySyncPlan = useCallback((plan: SyncPlan) => {
+    const changes = plan.download.length + plan.remove.length + Object.keys(plan.settledTombstones).length;
+    if (changes > 0) setData((d) => applySync(d, plan));
+  }, []);
   const loadingWeather = useRef(false);
 
   const refreshWeather = useCallback(
@@ -238,13 +249,13 @@ export function RottaProvider({ children }: { children: ReactNode }) {
       setSelectedDay(0);
     },
     addTrip: (newTrip) => {
-      setData((d) => addTripTo(d, newTrip));
+      setData((d) => addTripTo(d, newTrip, Date.now()));
       setSelectedDay(0);
     },
     deleteTrip: (id) => {
       const target = data.trips.find((r) => r.trip.id === id);
       target?.reservations.forEach((r) => deleteAttachment(r.attachment));
-      setData((d) => deleteTripFrom(d, id));
+      setData((d) => deleteTripFrom(d, id, Date.now()));
       setSelectedDay(0);
     },
     addExpense: (expense) => updateActive((r) => ({ ...r, expenses: [...r.expenses, { ...expense, id: makeId('gasto') }] })),
@@ -309,6 +320,8 @@ export function RottaProvider({ children }: { children: ReactNode }) {
       })),
     removePackingItem: (id) => updateActive((r) => ({ ...r, packing: r.packing.filter((i) => i.id !== id) })),
     updateSos: (info) => updateActive((r) => ({ ...r, sos: info })),
+    getData,
+    applySyncPlan,
     replaceData: (next) => {
       deleteAllAttachments();
       setData(next);
