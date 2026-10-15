@@ -43,7 +43,8 @@ npm run typecheck   # checagem de tipos
 | `src/core/` | Lógica sem interface: modelos, validador de roteiro, simulador de custos e a viagem de exemplo. Pode ser reaproveitada no backend. |
 | `src/components/` | Componentes visuais compartilhados. |
 | `src/state/` | Estado do app, salvo no aparelho, e anexos. |
-| `.github/workflows/` | CI que testa e gera o APK. |
+| `.github/workflows/` | CI que testa e gera o APK, e testa as regras do Firestore. |
+| `firestore.rules` e `firestore-tests/` | Regras de acesso ao banco e seus testes. |
 
 ## O que já funciona
 
@@ -74,6 +75,8 @@ Tudo fica salvo no aparelho e funciona offline. Horários de funcionamento e pre
 5. Em **Configurações do projeto > Seus apps**, adicione um app **Web** e copie a configuração.
 6. Copie `.env.example` para `.env`, preencha e rode `npx expo start --clear`.
 7. Para o APK do CI, cadastre os mesmos valores em **GitHub > Settings > Secrets and variables > Actions**, com os nomes do `.env.example`.
+
+Antes de usar com dados reais, siga o passo a passo de [docs/SEGURANCA.md](docs/SEGURANCA.md): restringir a chave, proteger contra descoberta de e-mails e publicar as regras.
 
 Para testar sem projeto real: `npx firebase-tools emulators:start --project demo-rotta` e, no `.env`, `EXPO_PUBLIC_FIREBASE_EMULATOR_HOST` com o IP do computador.
 

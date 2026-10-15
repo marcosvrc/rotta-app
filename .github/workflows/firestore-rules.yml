@@ -1,0 +1,31 @@
+name: Regras do Firestore
+
+on:
+  push:
+    branches: [master]
+    paths: ['firestore.rules', 'firestore-tests/**', 'firebase.json', '.github/workflows/firestore-rules.yml']
+  pull_request:
+    paths: ['firestore.rules', 'firestore-tests/**', 'firebase.json', '.github/workflows/firestore-rules.yml']
+  workflow_dispatch:
+
+jobs:
+  regras:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Testar regras no emulador
+        run: npm run test:rules
