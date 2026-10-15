@@ -48,7 +48,7 @@ export function AiButton({ label, onPress, loading }: { label: string; onPress: 
         onPress={() => configured && router.push('/conta')}
         disabled={!configured}
         accessibilityRole="button"
-        style={[styles.button, { borderColor: colors.line }]}
+        style={[styles.button, { borderColor: 'transparent', backgroundColor: colors.fill }]}
       >
         <Ionicons name="sparkles-outline" size={16} color={colors.muted} />
         <Txt size={13} color={colors.muted} style={{ flexShrink: 1 }}>

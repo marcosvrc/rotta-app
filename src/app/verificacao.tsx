@@ -176,7 +176,7 @@ function IssueCard({ issue, onApply, onKeep }: { issue: Issue; onApply: () => vo
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
   summary: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -138,7 +138,7 @@ export default function SuggestScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40 },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   suggestion: { flexDirection: 'row', gap: 12, padding: 14, alignItems: 'flex-start' },
 });

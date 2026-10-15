@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 32 },
   tip: { backgroundColor: colors.card, borderRadius: 16, padding: 14 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
-  footer: { backgroundColor: colors.card, paddingHorizontal: 20, paddingTop: 12 },
+  footer: { backgroundColor: colors.card, paddingHorizontal: 16, paddingTop: 12 },
   footerRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   status: { flex: 1, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
 });

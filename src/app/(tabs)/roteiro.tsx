@@ -267,10 +267,10 @@ function AlertsChip({ issues }: { issues: Issue[] }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  days: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 14 },
+  days: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
   dayTab: { width: 58, height: 60, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  content: { paddingHorizontal: 20, paddingBottom: 120 },
+  content: { paddingHorizontal: 16, paddingBottom: 120 },
   statsRow: { flexDirection: 'row', gap: 18, marginTop: 10 },
   leg: { marginLeft: 64, marginVertical: 6 },
   suggest: {
@@ -282,8 +282,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  thumb: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.line },
-  share: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
+  thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: colors.fill },
+  share: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill },
   rainToggle: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,8 +291,7 @@ const styles = StyleSheet.create({
     height: 32,
     paddingHorizontal: 10,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.fill,
   },
   addStop: {
     marginTop: 14,

@@ -38,7 +38,7 @@ export default function AttachmentScreen() {
               accessibilityLabel={`Anexo ${attachment.name}`}
             />
           </ScrollView>
-          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
             <Txt size={12} color={colors.muted} style={{ textAlign: 'center', marginBottom: 8 }}>
               Dica: aumente o brilho da tela para ler o QR code.
             </Txt>

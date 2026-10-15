@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { ComponentProps, ReactNode, useState } from 'react';
+import { ComponentProps, ReactNode, useEffect, useState } from 'react';
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,10 +25,16 @@ import { FontWeightName, colors, fonts } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-/** Texto com a fonte do app. Em RN, cada peso da Outfit é uma família própria. */
+/** Toque leve de confirmação, como nos controles do iOS. Na web não faz nada. */
+export function tapFeedback() {
+  if (Platform.OS === 'web') return;
+  Haptics.selectionAsync().catch(() => undefined);
+}
+
+/** Texto com a fonte do app. Em RN, cada peso da Inter é uma família própria. */
 export function Txt({
   weight = 'regular',
-  size = 14,
+  size = 15,
   color = colors.ink,
   style,
   ...props
@@ -34,40 +42,58 @@ export function Txt({
   return (
     <Text
       {...props}
-      style={[{ fontFamily: fonts[weight], fontSize: size, color, lineHeight: Math.round(size * 1.35) }, style]}
+      style={[
+        {
+          fontFamily: fonts[weight],
+          fontSize: size,
+          color,
+          lineHeight: Math.round(size * 1.3),
+          // A Inter fica levemente mais apertada em títulos grandes, como a SF Pro Display.
+          letterSpacing: size >= 22 ? -0.4 : size >= 17 ? -0.2 : 0,
+        },
+        style,
+      ]}
     />
   );
 }
 
+/** Bloco branco arredondado sobre o fundo cinza (lista agrupada do iOS). */
 export function Card({
   children,
   onPress,
   padding = 16,
-  borderColor = colors.line,
+  borderColor,
   style,
   accessibilityLabel,
 }: {
   children: ReactNode;
   onPress?: () => void;
   padding?: number;
+  /** Só para destacar (ex.: parada com alerta). Sem ela, o bloco não tem borda, como no iOS. */
   borderColor?: string;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 }) {
-  const base = [styles.card, { padding, borderColor }, style];
+  const highlighted = borderColor && borderColor !== colors.line;
+  const base = [styles.card, { padding }, highlighted ? { borderWidth: 1.5, borderColor } : null, style];
   if (!onPress) return <View style={base}>{children}</View>;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [...base, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [...base, pressed && { backgroundColor: '#F7F7F9' }]}
     >
       {children}
     </Pressable>
   );
 }
 
+/**
+ * Cabeçalho no estilo iOS.
+ * Telas das abas: título grande (Large Title) à esquerda.
+ * Telas empilhadas (back): barra de navegação com "‹ Voltar" e título central.
+ */
 export function ScreenHeader({
   title,
   subtitle,
@@ -79,37 +105,59 @@ export function ScreenHeader({
   back?: boolean;
   right?: ReactNode;
 }) {
+  const p = usePalette();
+  if (back) {
+    return (
+      <View style={styles.navBar}>
+        <View style={styles.navSide}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+            style={styles.navBack}
+          >
+            <Ionicons name="chevron-back" size={26} color={p.accent} style={{ marginLeft: -6 }} />
+            <Txt size={17} color={p.accent}>
+              Voltar
+            </Txt>
+          </Pressable>
+        </View>
+        <View style={styles.navCenter} accessibilityRole="header">
+          <Txt weight="semibold" size={17} numberOfLines={1} style={{ textAlign: 'center' }}>
+            {title}
+          </Txt>
+          {subtitle ? (
+            <Txt size={12} color={colors.muted} numberOfLines={1} style={{ textAlign: 'center' }}>
+              {subtitle}
+            </Txt>
+          ) : null}
+        </View>
+        <View style={[styles.navSide, { alignItems: 'flex-end' }]}>{right}</View>
+      </View>
+    );
+  }
   return (
-    <View style={[styles.header, back && { paddingLeft: 8 }]}>
-      {back && (
-        <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          style={styles.iconButton}
-          hitSlop={4}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.ink} />
-        </Pressable>
-      )}
-      <View style={{ flex: 1 }}>
-        <Txt weight="medium" size={24}>
+    <View style={styles.largeHeader}>
+      <View style={{ flex: 1 }} accessibilityRole="header">
+        <Txt weight="bold" size={34} numberOfLines={1}>
           {title}
         </Txt>
         {subtitle ? (
-          <Txt size={13} color={colors.muted}>
+          <Txt size={15} color={colors.muted} numberOfLines={1}>
             {subtitle}
           </Txt>
         ) : null}
       </View>
-      {right}
+      {right ? <View style={{ marginTop: 6 }}>{right}</View> : null}
     </View>
   );
 }
 
+/** Título de seção de lista agrupada: pequeno, em maiúsculas, cinza. */
 export function SectionTitle({ children }: { children: string }) {
   return (
-    <Txt weight="semibold" size={12} color={colors.muted} style={styles.sectionTitle}>
+    <Txt size={13} color={colors.muted} style={styles.sectionTitle}>
       {children.toUpperCase()}
     </Txt>
   );
@@ -125,24 +173,27 @@ export function Badge({ label, bg, fg, style }: { label: string; bg: string; fg:
   );
 }
 
-/** Chip que liga e desliga (ex.: interesses). */
+/** Chip em cápsula que liga e desliga (ex.: interesses). */
 export function ToggleChip({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
   const p = usePalette();
   return (
     <Pressable
-      onPress={onToggle}
+      onPress={() => {
+        tapFeedback();
+        onToggle();
+      }}
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
-      style={[styles.chip, { backgroundColor: checked ? p.accent : colors.card, borderColor: checked ? p.accent : colors.line }]}
+      style={[styles.chip, { backgroundColor: checked ? p.accent : colors.fill }]}
     >
-      <Txt weight="medium" color={checked ? '#FFFFFF' : colors.ink}>
+      <Txt weight={checked ? 'semibold' : 'medium'} color={checked ? '#FFFFFF' : colors.ink}>
         {label}
       </Txt>
     </Pressable>
   );
 }
 
-/** Escolha de uma entre poucas opções. */
+/** Controle segmentado do iOS: trilho cinza e a opção escolhida em branco. */
 export function Segmented<T extends string>({
   options,
   value,
@@ -159,12 +210,15 @@ export function Segmented<T extends string>({
         return (
           <Pressable
             key={o.value}
-            onPress={() => onChange(o.value)}
+            onPress={() => {
+              if (!selected) tapFeedback();
+              onChange(o.value);
+            }}
             accessibilityRole="radio"
             accessibilityState={{ selected }}
             style={[styles.segment, selected && styles.segmentSelected]}
           >
-            <Txt weight={selected ? 'semibold' : 'regular'} color={selected ? colors.ink : colors.body} numberOfLines={1}>
+            <Txt weight={selected ? 'semibold' : 'medium'} size={14} color={colors.ink} numberOfLines={1}>
               {o.label}
             </Txt>
           </Pressable>
@@ -174,6 +228,7 @@ export function Segmented<T extends string>({
   );
 }
 
+/** Stepper do iOS: uma cápsula cinza com − e +. O número fica ao lado. */
 export function Stepper({
   value,
   min,
@@ -189,11 +244,14 @@ export function Stepper({
 }) {
   return (
     <View style={styles.row}>
-      <StepButton icon="remove" label={`Menos ${unit}`} disabled={value <= min} onPress={() => onChange(value - 1)} />
-      <Txt weight="semibold" size={18} style={{ width: 40, textAlign: 'center' }} accessibilityLiveRegion="polite">
+      <Txt weight="semibold" size={17} style={{ minWidth: 32, textAlign: 'right', marginRight: 10 }} accessibilityLiveRegion="polite">
         {String(value)}
       </Txt>
-      <StepButton icon="add" label={`Mais ${unit}`} disabled={value >= max} onPress={() => onChange(value + 1)} />
+      <View style={styles.stepper}>
+        <StepButton icon="remove" label={`Menos ${unit}`} disabled={value <= min} onPress={() => onChange(value - 1)} />
+        <View style={styles.stepperDivider} />
+        <StepButton icon="add" label={`Mais ${unit}`} disabled={value >= max} onPress={() => onChange(value + 1)} />
+      </View>
     </View>
   );
 }
@@ -201,19 +259,49 @@ export function Stepper({
 function StepButton({ icon, label, disabled, onPress }: { icon: IconName; label: string; disabled: boolean; onPress: () => void }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
-      style={styles.stepButton}
+      hitSlop={{ top: 6, bottom: 6 }}
+      style={({ pressed }) => [styles.stepButton, pressed && { backgroundColor: '#D8D8DC' }]}
     >
-      <Ionicons name={icon} size={22} color={disabled ? colors.line : colors.ink} />
+      <Ionicons name={icon} size={20} color={disabled ? colors.chevron : colors.ink} />
     </Pressable>
   );
 }
 
-/** Linha de lista com ícone, título, subtítulo e seta. */
+/** Interruptor do iOS (verde ligado), igual nos dois sistemas. */
+export function Toggle({ value, onValueChange, accessibilityLabel }: { value: boolean; onValueChange: (v: boolean) => void; accessibilityLabel: string }) {
+  const [anim] = useState(() => new Animated.Value(value ? 1 : 0));
+  useEffect(() => {
+    Animated.timing(anim, { toValue: value ? 1 : 0, duration: 180, useNativeDriver: false }).start();
+  }, [value, anim]);
+  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 22] });
+  const backgroundColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.fill, colors.switchOn] });
+  return (
+    <Pressable
+      onPress={() => {
+        tapFeedback();
+        onValueChange(!value);
+      }}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
+    >
+      <Animated.View style={[styles.switchTrack, { backgroundColor }]}>
+        <Animated.View style={[styles.switchKnob, { transform: [{ translateX }] }]} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+/** Linha de lista no estilo Ajustes do iOS: ícone em quadrado colorido, título, subtítulo e seta. */
 export function ListRow({
   title,
   subtitle,
@@ -227,25 +315,29 @@ export function ListRow({
 }) {
   const p = usePalette();
   return (
-    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole="button" style={styles.listRow}>
-      <View style={[styles.listIcon, { backgroundColor: p.tint }]}>
-        <Ionicons name={icon} size={20} color={p.ink} />
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.listRow, pressed && onPress ? { backgroundColor: '#E5E5EA' } : null]}
+    >
+      <View style={[styles.listIcon, { backgroundColor: p.accent }]}>
+        <Ionicons name={icon} size={18} color="#FFFFFF" />
       </View>
       <View style={{ flex: 1 }}>
-        <Txt weight="semibold" size={15}>
-          {title}
-        </Txt>
+        <Txt size={17}>{title}</Txt>
         {subtitle ? (
           <Txt size={13} color={colors.muted}>
             {subtitle}
           </Txt>
         ) : null}
       </View>
-      {onPress ? <Ionicons name="chevron-forward" size={20} color={colors.muted} /> : null}
+      {onPress ? <Ionicons name="chevron-forward" size={18} color={colors.chevron} /> : null}
     </Pressable>
   );
 }
 
+/** Botão em cápsula. Cheio: ação principal. Vazio: fundo na cor clara do destaque, como o botão "tinted" do iOS. */
 export function PrimaryButton({
   label,
   onPress,
@@ -264,152 +356,22 @@ export function PrimaryButton({
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: filled ? p.accent : colors.card, borderColor: filled ? p.accent : colors.line },
-        pressed && { opacity: 0.85 },
+        { backgroundColor: filled ? p.accent : p.tint },
+        pressed && { opacity: 0.75 },
         style,
       ]}
     >
-      <Txt weight="semibold" size={15} color={filled ? '#FFFFFF' : colors.ink}>
+      <Txt weight="semibold" size={17} color={filled ? '#FFFFFF' : p.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
       </Txt>
     </Pressable>
   );
 }
 
-export function Divider() {
-  return <View style={{ height: 1, backgroundColor: colors.divider }} />;
+/** Separador fino. Por padrão começa recuado, alinhado ao texto das linhas, como no iOS. */
+export function Divider({ inset = 16 }: { inset?: number }) {
+  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.divider, marginLeft: inset }} />;
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 22,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-    gap: 4,
-  },
-  iconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: {
-    letterSpacing: 0.6,
-    marginTop: 20,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: 7,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  chip: {
-    minHeight: 44,
-    paddingHorizontal: 16,
-    borderRadius: 22,
-    borderWidth: 1,
-    justifyContent: 'center',
-  },
-  segmented: {
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    padding: 4,
-    gap: 4,
-  },
-  segment: {
-    flex: 1,
-    height: 42,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  segmentSelected: {
-    backgroundColor: colors.card,
-    shadowColor: '#1B2230',
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 64,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  listIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  input: {
-    minHeight: 50,
-    borderRadius: 14,
-    backgroundColor: colors.card,
-    paddingHorizontal: 14,
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.ink,
-  },
-  chipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  errorBox: {
-    backgroundColor: colors.criticalBg,
-    borderRadius: 14,
-    padding: 12,
-    gap: 4,
-  },
-  formFooter: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-  },
-  button: {
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
 
 /** Campo de texto com rótulo e dica opcional. */
 export function TextField({
@@ -438,14 +400,14 @@ export function TextField({
   const plain = secureTextEntry || keyboardType === 'email-address';
   return (
     <View style={{ gap: 6 }}>
-      <Txt weight="semibold" size={13} color={colors.muted}>
+      <Txt size={13} color={colors.muted} style={{ marginLeft: 4 }}>
         {label}
       </Txt>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#8A93A1"
+        placeholderTextColor="#A0A0A6"
         keyboardType={keyboardType}
         autoFocus={autoFocus}
         multiline={multiline}
@@ -454,16 +416,17 @@ export function TextField({
         autoCorrect={plain ? false : undefined}
         autoComplete={secureTextEntry ? 'password' : keyboardType === 'email-address' ? 'email' : undefined}
         accessibilityLabel={label}
+        selectionColor={p.accent}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={[
           styles.input,
-          multiline && { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' },
-          { borderColor: focused ? p.accent : colors.line, borderWidth: focused ? 1.5 : 1 },
+          multiline && { minHeight: 96, paddingTop: 13, textAlignVertical: 'top' },
+          { borderColor: focused ? p.accent : 'transparent' },
         ]}
       />
       {hint ? (
-        <Txt size={12} color={colors.muted}>
+        <Txt size={13} color={colors.muted} style={{ marginLeft: 4 }}>
           {hint}
         </Txt>
       ) : null}
@@ -471,7 +434,7 @@ export function TextField({
   );
 }
 
-/** Escolha de uma opção entre várias, em chips que quebram linha. */
+/** Escolha de uma opção entre várias, em cápsulas que quebram linha. */
 export function ChoiceChips<T extends string | number>({
   label,
   options,
@@ -487,7 +450,7 @@ export function ChoiceChips<T extends string | number>({
   return (
     <View style={{ gap: 6 }}>
       {label ? (
-        <Txt weight="semibold" size={13} color={colors.muted}>
+        <Txt size={13} color={colors.muted} style={{ marginLeft: 4 }}>
           {label}
         </Txt>
       ) : null}
@@ -497,15 +460,15 @@ export function ChoiceChips<T extends string | number>({
           return (
             <Pressable
               key={String(o.value)}
-              onPress={() => onChange(o.value)}
+              onPress={() => {
+                if (!selected) tapFeedback();
+                onChange(o.value);
+              }}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              style={[
-                styles.chip,
-                { backgroundColor: selected ? p.accent : colors.card, borderColor: selected ? p.accent : colors.line },
-              ]}
+              style={[styles.chip, { backgroundColor: selected ? p.accent : colors.card }]}
             >
-              <Txt weight="medium" color={selected ? '#FFFFFF' : colors.ink}>
+              <Txt weight={selected ? 'semibold' : 'medium'} color={selected ? '#FFFFFF' : colors.ink}>
                 {o.label}
               </Txt>
             </Pressable>
@@ -521,9 +484,12 @@ export function ErrorBox({ errors }: { errors: string[] }) {
   return (
     <View style={styles.errorBox} accessibilityLiveRegion="polite" accessibilityRole="alert">
       {errors.map((e) => (
-        <Txt key={e} size={13} color={colors.criticalInk}>
-          {e}
-        </Txt>
+        <View key={e} style={{ flexDirection: 'row', gap: 8 }}>
+          <Ionicons name="alert-circle" size={18} color={colors.criticalInk} />
+          <Txt size={14} color={colors.criticalInk} style={{ flex: 1 }}>
+            {e}
+          </Txt>
+        </View>
       ))}
     </View>
   );
@@ -541,7 +507,7 @@ export function confirmAction(title: string, message: string, confirmLabel: stri
   ]);
 }
 
-/** Tela de formulário: cabeçalho, campos com rolagem e botão de salvar fixo embaixo. */
+/** Tela de formulário: barra de navegação, campos com rolagem e botão de salvar embaixo. */
 export function FormScreen({
   title,
   subtitle,
@@ -561,7 +527,7 @@ export function FormScreen({
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHeader back title={title} subtitle={subtitle} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 18 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
         <View style={styles.formFooter}>
@@ -572,3 +538,149 @@ export function FormScreen({
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  largeHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
+    gap: 8,
+  },
+  navBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 52,
+    paddingHorizontal: 8,
+  },
+  navSide: { width: 96, justifyContent: 'center' },
+  navBack: { flexDirection: 'row', alignItems: 'center', minHeight: 44, paddingRight: 8 },
+  navCenter: { flex: 1, alignItems: 'center' },
+  sectionTitle: {
+    marginTop: 24,
+    marginBottom: 7,
+    marginLeft: 16,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  chip: {
+    minHeight: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    justifyContent: 'center',
+  },
+  segmented: {
+    flexDirection: 'row',
+    backgroundColor: colors.fill,
+    borderRadius: 100,
+    padding: 3,
+    gap: 2,
+  },
+  segment: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  segmentSelected: {
+    backgroundColor: colors.card,
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.fill,
+    borderRadius: 100,
+    overflow: 'hidden',
+  },
+  stepperDivider: { width: StyleSheet.hairlineWidth, height: 18, backgroundColor: colors.chevron },
+  stepButton: {
+    width: 50,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  switchTrack: { width: 51, height: 31, borderRadius: 16, justifyContent: 'center' },
+  switchKnob: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  listIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  input: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    backgroundColor: colors.card,
+    paddingHorizontal: 14,
+    fontFamily: fonts.regular,
+    fontSize: 17,
+    color: colors.ink,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  errorBox: {
+    backgroundColor: colors.criticalBg,
+    borderRadius: 14,
+    padding: 12,
+    gap: 6,
+  },
+  formFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+    backgroundColor: colors.background,
+  },
+  button: {
+    minHeight: 50,
+    borderRadius: 100,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

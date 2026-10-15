@@ -1,10 +1,4 @@
-import {
-  Outfit_400Regular,
-  Outfit_500Medium,
-  Outfit_600SemiBold,
-  Outfit_700Bold,
-  useFonts,
-} from '@expo-google-fonts/outfit';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -18,7 +12,7 @@ import { colors } from '@/theme';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold });
+  const [loaded, error] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   if (!loaded && !error) return null;
   return (
     <RottaProvider>
@@ -43,7 +37,15 @@ function AppStack() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+          // Transição de empurrar no estilo iOS também no Android; no iPhone já é a nativa, com gesto de voltar.
+          animation: 'ios_from_right',
+          gestureEnabled: true,
+        }}
+      >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="lugar/[id]" />
         <Stack.Screen name="verificacao" />

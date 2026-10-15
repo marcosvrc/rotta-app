@@ -175,7 +175,7 @@ export default function SplitScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 60 },
+  content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 60 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14, paddingRight: 6, minHeight: 56 },
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -184,12 +184,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 50,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
     backgroundColor: colors.card,
     paddingHorizontal: 14,
     fontFamily: fonts.regular,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.ink,
   },
   addButton: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },

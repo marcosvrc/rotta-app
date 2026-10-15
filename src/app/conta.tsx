@@ -237,7 +237,7 @@ function SignedIn() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 12 },
+  content: { paddingHorizontal: 16, paddingTop: 12 },
   icon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   info: { backgroundColor: colors.goodBg, borderRadius: 14, padding: 12 },
 });

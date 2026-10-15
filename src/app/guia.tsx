@@ -84,8 +84,8 @@ export default function GuideScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 60 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 60 },
   summary: { borderRadius: 18, padding: 16 },
   item: { paddingHorizontal: 16, paddingVertical: 12, gap: 2 },
-  itemBorder: { borderTopWidth: 1, borderTopColor: colors.divider },
+  itemBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider, marginLeft: 16, paddingLeft: 0 },
 });

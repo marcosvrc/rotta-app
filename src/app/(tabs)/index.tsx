@@ -33,20 +33,17 @@ export default function TripsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headRow}>
           <View style={{ flex: 1 }}>
-            <Txt size={14} color={colors.muted}>
-              Olá!
-            </Txt>
-            <Txt weight="medium" size={30}>
-              Suas viagens
+            <Txt weight="bold" size={34} accessibilityRole="header">
+              Viagens
             </Txt>
           </View>
           <Pressable
             onPress={() => router.push('/viagem')}
             accessibilityRole="button"
             accessibilityLabel="Nova viagem"
-            style={[styles.newButton, { backgroundColor: p.accent }]}
+            style={[styles.newButton, { backgroundColor: p.tint }]}
           >
-            <Ionicons name="add" size={26} color="#FFFFFF" />
+            <Ionicons name="add" size={26} color={p.accent} />
           </Pressable>
         </View>
 
@@ -203,20 +200,18 @@ function Shortcut({ icon, label, value, onPress }: { icon: IconName; label: stri
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
+  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
   headRow: { flexDirection: 'row', alignItems: 'center' },
-  newButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  newButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   dateChip: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
   edit: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   stats: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  miniStat: { flex: 1, backgroundColor: colors.background, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 },
+  miniStat: { flex: 1, backgroundColor: colors.background, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   shortcuts: { flexDirection: 'row', gap: 8, marginTop: 12 },
   shortcut: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderRadius: 20,
     padding: 12,
     gap: 2,
     minHeight: 96,

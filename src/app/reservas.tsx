@@ -83,7 +83,7 @@ export default function ReservationsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 60 },
+  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 60 },
   dateTitle: { letterSpacing: 0.6, marginTop: 14, marginBottom: 8, marginLeft: 4 },
   icon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   attachment: {

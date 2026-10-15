@@ -50,7 +50,7 @@ export default function CostsScreen() {
         title={tab === 'previsto' ? 'Simulador de custos' : 'Gastos da viagem'}
         subtitle={`${trip.destination} · ${trip.days.length} dias, ${nightsOf(trip)} noites`}
       />
-      <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
         <Segmented<Tab>
           value={tab}
           onChange={setTab}
@@ -382,7 +382,7 @@ function Breakdown<K extends string>({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 120 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 120 },
   total: { backgroundColor: colors.night, borderRadius: 22, padding: 16 },
   bar: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2, marginTop: 14 },
   label: { marginTop: 14, marginBottom: 6 },

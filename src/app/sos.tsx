@@ -161,7 +161,7 @@ function SosForm({ initial, onSave, onCancel }: { initial: SosInfo; onSave: (inf
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 60 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 60 },
   emergency: { backgroundColor: colors.alertBg, borderRadius: 22, padding: 16 },
   callButton: {
     flexDirection: 'row',

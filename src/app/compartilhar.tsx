@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, PrimaryButton, ScreenHeader, Txt } from '@/components/ui';
+import { Card, PrimaryButton, ScreenHeader, Toggle, Txt } from '@/components/ui';
 import { itineraryHtml, itineraryText } from '@/core/share';
 import { shareItineraryPdf } from '@/state/print';
 import { useRotta } from '@/state/rotta';
@@ -10,7 +10,7 @@ import { colors } from '@/theme';
 
 /** Envia o roteiro para quem vai junto: texto (WhatsApp) ou PDF. */
 export default function ShareScreen() {
-  const { trip, record, palette: p } = useRotta();
+  const { trip, record } = useRotta();
   const [withReservations, setWithReservations] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,13 +52,7 @@ export default function ShareScreen() {
                 Só para quem vai junto: códigos de reserva dão acesso às suas reservas.
               </Txt>
             </View>
-            <Switch
-              value={withReservations}
-              onValueChange={setWithReservations}
-              accessibilityLabel="Incluir reservas e códigos"
-              trackColor={{ true: p.accent, false: colors.line }}
-              thumbColor="#FFFFFF"
-            />
+            <Toggle value={withReservations} onValueChange={setWithReservations} accessibilityLabel="Incluir reservas e códigos" />
           </View>
         </Card>
 
@@ -86,8 +80,8 @@ export default function ShareScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 30 },
   label: { letterSpacing: 0.6, marginTop: 20, marginBottom: 8, marginLeft: 4 },
-  preview: { backgroundColor: colors.card, borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: 14 },
-  footer: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingVertical: 12, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.line },
+  preview: { backgroundColor: colors.card, borderRadius: 20, padding: 16 },
+  footer: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, backgroundColor: colors.background },
 });

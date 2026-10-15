@@ -1,31 +1,39 @@
-/** Cores neutras do app; a cor de destaque é escolhida pelo usuário. */
+/**
+ * Cores no estilo iOS (system grouped background, labels e separadores da Apple), usadas no iPhone e no Android.
+ * A cor de destaque é escolhida pelo usuário.
+ */
 export const colors = {
-  ink: '#1B2230',
-  muted: '#5F6775',
-  body: '#434B58',
-  background: '#EEF2F7',
+  ink: '#000000',
+  muted: '#6C6C70',
+  body: '#3C3C43',
+  background: '#F2F2F7',
   card: '#FFFFFF',
-  line: '#E4E9F0',
-  divider: '#EEF2F6',
-  night: '#1B2230',
-  nightMuted: '#B6BFCC',
-  criticalBg: '#F6C9B6',
-  criticalInk: '#6B2410',
-  criticalBorder: '#E2A58C',
-  warningBg: '#F7E2B8',
-  warningInk: '#5E4208',
-  warningBorder: '#E8C98A',
-  goodBg: '#DCEFE4',
-  goodInk: '#17603F',
-  alertBg: '#FBE9E1',
-  alertInk: '#8A3412',
+  /** Separador fino entre linhas (hairline). */
+  line: '#C6C6C8',
+  divider: '#C6C6C8',
+  /** Preenchimento cinza de controles (chips, segmented, stepper). */
+  fill: '#E9E9EB',
+  chevron: '#C4C4C7',
+  switchOn: '#34C759',
+  night: '#1C1C1E',
+  nightMuted: '#AEAEB2',
+  criticalBg: '#FFE5E3',
+  criticalInk: '#B3261E',
+  criticalBorder: '#FF9F97',
+  warningBg: '#FFF1D6',
+  warningInk: '#7A4B00',
+  warningBorder: '#FFCC66',
+  goodBg: '#DFF6E5',
+  goodInk: '#1E6B34',
+  alertBg: '#FFECE5',
+  alertInk: '#9A3412',
 } as const;
 
 /** As quatro opções de cor de destaque, todas com contraste para texto branco. */
 export const ACCENT_OPTIONS = [
-  { id: 'azul', label: 'Azul', color: '#1F6FEB' },
+  { id: 'azul', label: 'Azul', color: '#0071E3' },
   { id: 'petroleo', label: 'Petróleo', color: '#0F766E' },
-  { id: 'violeta', label: 'Violeta', color: '#6D28D9' },
+  { id: 'violeta', label: 'Índigo', color: '#5856D6' },
   { id: 'terracota', label: 'Terracota', color: '#C2410C' },
 ] as const;
 
@@ -59,11 +67,12 @@ export function paletteFor(accentId: AccentId): AccentPalette {
   };
 }
 
+/** Inter: a fonte livre mais próxima da SF Pro do iOS, igual nos dois sistemas. */
 export const fonts = {
-  regular: 'Outfit_400Regular',
-  medium: 'Outfit_500Medium',
-  semibold: 'Outfit_600SemiBold',
-  bold: 'Outfit_700Bold',
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
 } as const;
 
 export type FontWeightName = keyof typeof fonts;

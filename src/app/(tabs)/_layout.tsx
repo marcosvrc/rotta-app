@@ -1,58 +1,56 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { TabList, TabSlot, TabTrigger, TabTriggerSlotProps, Tabs } from 'expo-router/ui';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconName, Txt } from '@/components/ui';
+import { IconName, Txt, tapFeedback } from '@/components/ui';
 import { usePalette } from '@/state/rotta';
 import { colors } from '@/theme';
 
-/** Barra inferior flutuante: a aba ativa vira uma pílula com ícone e nome. */
+/** Barra de abas flutuante no estilo do iOS 26: cápsula translúcida, ícone e nome em cada aba. */
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   return (
     <Tabs>
       <TabSlot />
-      <TabList style={[styles.bar, { bottom: insets.bottom + 12 }]}>
-        <TabTrigger name="index" href="/" asChild>
-          <PillButton icon="home" label="Viagens" />
-        </TabTrigger>
-        <TabTrigger name="roteiro" href="/roteiro" asChild>
-          <PillButton icon="calendar" label="Roteiro" />
-        </TabTrigger>
-        <TabTrigger name="custos" href="/custos" asChild>
-          <PillButton icon="wallet" label="Custos" />
-        </TabTrigger>
-        <TabTrigger name="ajustes" href="/ajustes" asChild>
-          <PillButton icon="settings" label="Ajustes" />
-        </TabTrigger>
+      {/* A TabList precisa ser filha direta de Tabs: é dela que o expo-router lê as abas. */}
+      <TabList style={[styles.bar, { bottom: Math.max(insets.bottom, 12) }]}>
+          <TabTrigger name="index" href="/" asChild>
+            <TabButton icon="airplane" label="Viagens" />
+          </TabTrigger>
+          <TabTrigger name="roteiro" href="/roteiro" asChild>
+            <TabButton icon="calendar" label="Roteiro" />
+          </TabTrigger>
+          <TabTrigger name="custos" href="/custos" asChild>
+            <TabButton icon="wallet" label="Custos" />
+          </TabTrigger>
+          <TabTrigger name="ajustes" href="/ajustes" asChild>
+            <TabButton icon="settings" label="Ajustes" />
+          </TabTrigger>
       </TabList>
     </Tabs>
   );
 }
 
-function PillButton({ isFocused, icon, label, ...props }: TabTriggerSlotProps & { icon: IconName; label: string }) {
+function TabButton({ isFocused, icon, label, onPress, ...props }: TabTriggerSlotProps & { icon: IconName; label: string }) {
   const p = usePalette();
-  if (isFocused) {
-    return (
-      <Pressable
-        {...props}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: true }}
-        style={[styles.active, { backgroundColor: p.accent }]}
-      >
-        <Ionicons name={icon} size={20} color="#FFFFFF" />
-        <Txt weight="semibold" color="#FFFFFF">
-          {label}
-        </Txt>
-      </Pressable>
-    );
-  }
+  const color = isFocused ? p.accent : colors.ink;
   return (
-    <Pressable {...props} accessibilityRole="tab" accessibilityLabel={label} style={styles.idle}>
-      <View>
-        <Ionicons name={icon} size={20} color={colors.body} />
-      </View>
+    <Pressable
+      {...props}
+      onPress={(e) => {
+        if (!isFocused) tapFeedback();
+        onPress?.(e);
+      }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: !!isFocused }}
+      accessibilityLabel={label}
+      style={[styles.tab, isFocused && styles.tabActive]}
+    >
+      <Ionicons name={isFocused ? icon : (`${icon}-outline` as IconName)} size={22} color={color} />
+      <Txt size={10} weight={isFocused ? 'semibold' : 'medium'} color={color} style={{ lineHeight: 12 }}>
+        {label}
+      </Txt>
     </Pressable>
   );
 }
@@ -60,37 +58,29 @@ function PillButton({ isFocused, icon, label, ...props }: TabTriggerSlotProps & 
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: colors.card,
+    left: '4%',
+    right: '4%',
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(250,250,252,0.98)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.08)',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    shadowColor: '#1B2230',
+    paddingHorizontal: 4,
+    shadowColor: '#000000',
     shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
   },
-  active: {
-    height: 48,
-    borderRadius: 24,
-    paddingLeft: 14,
-    paddingRight: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  idle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.line,
+  tab: {
+    flex: 1,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
   },
+  tabActive: { backgroundColor: 'rgba(118,118,128,0.14)' },
 });

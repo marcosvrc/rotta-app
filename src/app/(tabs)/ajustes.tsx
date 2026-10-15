@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, ListRow, PrimaryButton, ScreenHeader, SectionTitle, Segmented, ToggleChip, Txt, confirmAction } from '@/components/ui';
+import { Card, ListRow, PrimaryButton, ScreenHeader, SectionTitle, Segmented, Toggle, ToggleChip, Txt, confirmAction } from '@/components/ui';
 import { PACES, Pace } from '@/core/model';
 import { PRIVACY_URL } from '@/core/legal';
 import { useAccount } from '@/state/account';
@@ -223,7 +223,7 @@ export default function SettingsScreen() {
         <SectionTitle>Sobre</SectionTitle>
         <Card>
           <Txt weight="semibold" size={15}>
-            Rotta 0.7.0
+            Rotta 0.8.0
           </Txt>
           <Txt size={13} color={colors.muted}>
             Versão de testes. Mapas do Google chegam numa próxima etapa.
@@ -244,7 +244,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingBottom: 120 },
+  content: { paddingHorizontal: 16, paddingBottom: 120 },
   swatches: { flexDirection: 'row', justifyContent: 'space-between' },
   swatchItem: { width: 72, alignItems: 'center', gap: 6, paddingVertical: 4 },
   swatch: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
@@ -253,7 +253,6 @@ const styles = StyleSheet.create({
 });
 
 function SwitchRow({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
-  const { palette: p } = useRotta();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 }}>
       <View style={{ flex: 1 }}>
@@ -266,13 +265,7 @@ function SwitchRow({ label, hint, value, onChange }: { label: string; hint?: str
           </Txt>
         ) : null}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel={label}
-        trackColor={{ true: p.accent, false: colors.line }}
-        thumbColor="#FFFFFF"
-      />
+      <Toggle value={value} onValueChange={onChange} accessibilityLabel={label} />
     </View>
   );
 }
