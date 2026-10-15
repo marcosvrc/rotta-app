@@ -25,6 +25,15 @@ const DAILY_LIMIT = defineInt('AI_DAILY_LIMIT', { default: 30 });
 /** Para testes com um servidor falso no emulador. Vazio usa o OpenRouter. */
 const OPENROUTER_BASE_URL = defineString('OPENROUTER_BASE_URL', { default: '' });
 
+async function safeSource<T>(name: string, load: () => Promise<T | null>): Promise<T | null> {
+  try {
+    return await load();
+  } catch (e) {
+    logger.warn('fonte indisponível', { name, error: e instanceof Error ? e.message : String(e) });
+    return null;
+  }
+}
+
 export const ia = onCall(
   {
     region: 'southamerica-east1',
@@ -58,8 +67,9 @@ export const ia = onCall(
       const result = await runTask(req, {
         llm: openRouter(apiKey, fetch, OPENROUTER_BASE_URL.value() || undefined),
         models: { fast: MODEL_FAST.value(), strong: MODEL_STRONG.value() },
-        wikipedia: (q) => wikipediaSummary(fetch, q),
-        wikivoyage: (d) => wikivoyageText(fetch, d),
+        // Fonte fora do ar não derruba o pedido: a tarefa segue sem ela (e sem inventar, no caso da história).
+        wikipedia: (q) => safeSource('wikipedia', () => wikipediaSummary(fetch, q)),
+        wikivoyage: (d) => safeSource('wikivoyage', () => wikivoyageText(fetch, d)),
         cache: firestoreCache(db),
         onUsage: (_task, u) => {
           usage.tokens += u.promptTokens + u.completionTokens;
