@@ -44,6 +44,7 @@ npm run typecheck   # checagem de tipos
 | `src/components/` | Componentes visuais compartilhados. |
 | `src/state/` | Estado do app, salvo no aparelho, e anexos. |
 | `.github/workflows/` | CI que testa e gera o APK, e testa as regras do Firestore. |
+| `functions/` | Cloud Function `ia`: orquestrador de IA com OpenRouter. |
 | `firestore.rules` e `firestore-tests/` | Regras de acesso ao banco e seus testes. |
 
 ## O que já funciona
@@ -62,6 +63,7 @@ npm run typecheck   # checagem de tipos
 - SOS com números de emergência do país e contatos da viagem (hospedagem, seguro, consulado), com toque para ligar.
 - Backup em arquivo para trocar de celular (os anexos não entram no backup).
 - Conta com e-mail e senha (Firebase) e sincronização das viagens entre aparelhos. Sem o Firebase configurado, o app funciona só no aparelho.
+- IA (OpenRouter, via Cloud Function): explica alertas do validador, gera o guia do destino e a história dos lugares a partir da Wikipedia e do Wikivoyage, e sugere paradas para um dia. Veja [docs/IA.md](docs/IA.md).
 - Troca da cor de destaque do app.
 
 Tudo fica salvo no aparelho e funciona offline. Horários de funcionamento e preços ainda são de exemplo. Os próximos passos são as APIs do Google Maps, o backend (Firebase) com login e a IA.

@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiButton, AiErrorText, useAiCall } from '@/components/ai';
 import { CityIllustration } from '@/components/illustrations';
 import { Badge, Card, PrimaryButton, Segmented, Txt } from '@/components/ui';
 import { timeLabel } from '@/core/calendar';
 import { formatDuration } from '@/core/format';
 import { dayIndexOf, hoursLabel } from '@/core/model';
+import { StoryOutput } from '@/core/ai';
+import { askAi } from '@/state/cloud/ai';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
@@ -16,9 +19,11 @@ type Section = 'historia' | 'info' | 'dicas';
 
 export default function PlaceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { trip, selectedDay, palette: p } = useRotta();
+  const { trip, selectedDay, updateTrip, palette: p } = useRotta();
   const [section, setSection] = useState<Section>('historia');
   const place = trip.places.find((x) => x.id === id);
+  const ai = useAiCall<StoryOutput>();
+  const [storyMissing, setStoryMissing] = useState(false);
 
   if (!place) {
     return (
@@ -27,6 +32,25 @@ export default function PlaceScreen() {
       </SafeAreaView>
     );
   }
+
+  const fetchStory = async () => {
+    const result = await ai.run(async () => {
+      const r = await askAi({
+        task: 'historia_lugar',
+        input: { placeName: place.name, city: trip.destination, country: trip.country },
+      });
+      return r.data;
+    });
+    if (!result) return;
+    if (!result.found) {
+      setStoryMissing(true);
+      return;
+    }
+    updateTrip((t) => ({
+      ...t,
+      places: t.places.map((x) => (x.id === place.id ? { ...x, story: result.story, sourceUrl: result.source?.url } : x)),
+    }));
+  };
 
   const dayIndex = dayIndexOf(trip, place.id);
   const stop = dayIndex !== null ? trip.days[dayIndex].stops.find((s) => s.placeId === place.id) : undefined;
@@ -76,9 +100,19 @@ export default function PlaceScreen() {
         <View style={{ height: 14 }} />
 
         {section === 'historia' && !place.story && (
-          <Txt color={colors.muted}>
-            Ainda não há história para este lugar. Quando a IA entrar no app, o resumo vem da Wikipedia com a fonte.
-          </Txt>
+          <View>
+            <Txt color={colors.muted}>
+              {storyMissing
+                ? 'A Wikipedia não tem um artigo sobre este lugar, então a IA não escreve uma história para ele.'
+                : 'Ainda não há história para este lugar. A IA resume o artigo da Wikipedia e mostra a fonte.'}
+            </Txt>
+            {!storyMissing && (
+              <View style={{ marginTop: 12 }}>
+                <AiButton label="Buscar história" onPress={fetchStory} loading={ai.loading} />
+                <AiErrorText error={ai.error} />
+              </View>
+            )}
+          </View>
         )}
 
         {section === 'historia' && !!place.story && (
@@ -90,7 +124,7 @@ export default function PlaceScreen() {
             {place.sourceUrl ? (
               <Pressable onPress={() => Linking.openURL(place.sourceUrl!)} accessibilityRole="link" style={{ paddingVertical: 10 }}>
                 <Txt weight="semibold" color={p.accent}>
-                  Ler a fonte na Wikipedia
+                  Ler a fonte
                 </Txt>
               </Pressable>
             ) : null}

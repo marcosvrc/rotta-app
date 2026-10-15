@@ -1,13 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiButton, AiErrorText, useAiCall } from '@/components/ai';
 import { ScoreRing } from '@/components/illustrations';
 import { Badge, Card, PrimaryButton, ScreenHeader, SectionTitle, Txt } from '@/components/ui';
 import { shortDateLabel, timeLabel } from '@/core/calendar';
 import { ISSUE_KIND_LABEL, Issue, scoreFor } from '@/core/validator';
+import { ExplainIssueOutput } from '@/core/ai';
+import { askAi } from '@/state/cloud/ai';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
@@ -93,6 +96,26 @@ function IssueCard({ issue, onApply, onKeep }: { issue: Issue; onApply: () => vo
   const critical = issue.severity === 'CRITICA';
   const stop = issue.placeId ? day.stops.find((s) => s.placeId === issue.placeId) : undefined;
   const where = `Dia ${issue.dayIndex + 1} · ${shortDateLabel(day.date)}${stop ? ` · ${timeLabel(stop.start)}` : ''}`;
+  const [explained, setExplained] = useState<ExplainIssueOutput | null>(null);
+  const ai = useAiCall<ExplainIssueOutput>();
+  const placeName = issue.placeId ? (trip.places.find((x) => x.id === issue.placeId)?.name ?? '') : day.title;
+  const explain = async () => {
+    const result = await ai.run(async () => {
+      const r = await askAi({
+        task: 'explicar_alerta',
+        input: {
+          destination: trip.destination,
+          dayLabel: where,
+          placeName: placeName || day.title,
+          issueKind: ISSUE_KIND_LABEL[issue.kind],
+          issueText: `${issue.title}. ${issue.detail}`,
+          fixDescription: issue.fixDescription ?? undefined,
+        },
+      });
+      return r.data;
+    });
+    if (result) setExplained(result);
+  };
 
   return (
     <Card borderColor={critical ? colors.criticalBorder : colors.line}>
@@ -112,6 +135,24 @@ function IssueCard({ issue, onApply, onKeep }: { issue: Issue; onApply: () => vo
       <Txt size={13} color={colors.body}>
         {issue.detail}
       </Txt>
+      {explained ? (
+        <View style={[styles.ai, { backgroundColor: p.tint }]}>
+          <Txt size={11} weight="bold" color={p.ink} style={{ letterSpacing: 0.8 }}>
+            EXPLICAÇÃO DA IA
+          </Txt>
+          <Txt size={14} style={{ marginTop: 4 }}>
+            {explained.explanation}
+          </Txt>
+          <Txt size={14} weight="medium" style={{ marginTop: 6 }}>
+            {`Dica: ${explained.tip}`}
+          </Txt>
+        </View>
+      ) : (
+        <View style={{ marginTop: 10 }}>
+          <AiButton label="Por que isso importa?" onPress={explain} loading={ai.loading} />
+          <AiErrorText error={ai.error} />
+        </View>
+      )}
 
       {issue.fix && issue.fixDescription ? (
         <View style={styles.planB}>
@@ -153,5 +194,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 12,
   },
+  ai: { borderRadius: 14, padding: 12, marginTop: 10 },
   planB: { backgroundColor: colors.background, borderRadius: 14, padding: 12, marginTop: 10 },
 });

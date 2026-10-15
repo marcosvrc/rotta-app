@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Configuração do Firebase (`apiKey`, `projectId`, `appId`...) | **Não.** Vai dentro do APK e qualquer um consegue ler. Só identifica o projeto. | `.env` (fora do git) e *Secrets* do GitHub, por organização |
 | Senhas dos usuários | Sim | Só no Firebase Auth. Nunca no app nem no banco |
-| Chave do OpenRouter (etapa 4) | **Sim.** Quem tiver gasta seu crédito | Só no Secret Manager, lida pela Cloud Function. Nunca no app nem no GitHub |
+| Chave do OpenRouter | **Sim.** Quem tiver gasta seu crédito | Só no Secret Manager (`functions:secrets:set`), lida pela Cloud Function. Nunca no app nem no GitHub |
 
 A proteção dos dados vem das **regras do Firestore** (`firestore.rules`), testadas em `firestore-tests/rules.test.js`:
 
@@ -14,7 +14,9 @@ A proteção dos dados vem das **regras do Firestore** (`firestore.rules`), test
 - só os campos esperados, com tipos certos e menos de 900 KB por viagem;
 - `savedAt` precisa ser a hora do servidor;
 - nada pode ser apagado pelo app (exclusão é só marcação);
-- qualquer outro caminho do banco é negado.
+- qualquer outro caminho do banco é negado, inclusive o cache e o consumo da IA (`ai_cache`, `ai_usage`), que só a Cloud Function acessa.
+
+A função de IA (`functions/`) só atende usuário logado, valida cada pedido, tem limite diário por usuário (`AI_DAILY_LIMIT`), no máximo 5 instâncias simultâneas e registra tokens e custo de cada chamada. O App Check será ligado nela na etapa 5.
 
 Rodar os testes: `npm run test:rules` (precisa de Java 11+). No GitHub, o workflow **Regras do Firestore** roda sozinho a cada mudança nas regras.
 

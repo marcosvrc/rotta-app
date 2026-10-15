@@ -55,6 +55,8 @@ function AppStack() {
         <Stack.Screen name="mala" />
         <Stack.Screen name="sos" />
         <Stack.Screen name="conta" />
+        <Stack.Screen name="guia" />
+        <Stack.Screen name="sugerir" />
       </Stack>
     </>
   );

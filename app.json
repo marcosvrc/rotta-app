@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rotta",
     "slug": "rotta",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "scheme": "rotta",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

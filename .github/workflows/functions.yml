@@ -1,0 +1,36 @@
+name: Functions de IA
+
+on:
+  push:
+    branches: [master]
+    paths: ['functions/**', 'src/core/ai.ts', '.github/workflows/functions.yml']
+  pull_request:
+    paths: ['functions/**', 'src/core/ai.ts', '.github/workflows/functions.yml']
+  workflow_dispatch:
+
+jobs:
+  functions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Checar tipos
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      - name: Compilar
+        run: npm run build

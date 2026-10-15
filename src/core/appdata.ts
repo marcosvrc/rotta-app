@@ -1,3 +1,4 @@
+import { GuideOutput } from './ai';
 import { ChecklistItem, defaultChecklist } from './checklist';
 import { Expense } from './expenses';
 import { PackingItem } from './packing';
@@ -21,6 +22,8 @@ export interface TripRecord {
   geo?: GeoPlace;
   /** Última previsão do tempo consultada, guardada para uso offline. */
   weather?: WeatherCache;
+  /** Guia do destino gerado pela IA, guardado para ler sem internet. */
+  guide?: { data: GuideOutput; fetchedAt: string };
   /** Momento da última mudança (ms desde 1970), usado na sincronização com a nuvem. */
   updatedAt: number;
 }
@@ -101,6 +104,7 @@ function migrateRecord(r: Partial<TripRecord>): TripRecord {
     sos: r.sos ?? {},
     geo: r.geo,
     weather: r.weather,
+    guide: r.guide,
     updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : 0,
   };
 }

@@ -17,6 +17,7 @@ import { CostEstimate, estimateCost } from '@/core/cost';
 import { makeId } from '@/core/editing';
 import { Expense } from '@/core/expenses';
 import { PlaceCatalog, Trip, catalogOf, nightsOf } from '@/core/model';
+import { GuideOutput } from '@/core/ai';
 import { mergePacking, suggestPacking } from '@/core/packing';
 import { SyncPlan, applySync } from '@/core/sync';
 import { Reservation } from '@/core/reservations';
@@ -73,6 +74,7 @@ interface RottaState {
   addPackingItem: (title: string) => void;
   removePackingItem: (id: string) => void;
   updateSos: (info: SosInfo) => void;
+  saveGuide: (guide: GuideOutput) => void;
   replaceData: (data: AppData) => void;
   /** Dados mais recentes, para a sincronização ler sem esperar um novo render. */
   getData: () => AppData;
@@ -234,7 +236,7 @@ export function RottaProvider({ children }: { children: ReactNode }) {
         const trip = fn(r.trip);
         const moved = trip.destination !== r.trip.destination || trip.country !== r.trip.country;
         // Destino novo: a localização e a previsão antigas deixam de valer.
-        const next = moved ? { ...r, trip, geo: undefined, weather: undefined } : { ...r, trip };
+        const next = moved ? { ...r, trip, geo: undefined, weather: undefined, guide: undefined } : { ...r, trip };
         return clampExpenseDays(next);
       }),
     applyFix: (issue) => {
@@ -320,6 +322,7 @@ export function RottaProvider({ children }: { children: ReactNode }) {
       })),
     removePackingItem: (id) => updateActive((r) => ({ ...r, packing: r.packing.filter((i) => i.id !== id) })),
     updateSos: (info) => updateActive((r) => ({ ...r, sos: info })),
+    saveGuide: (guide) => updateActive((r) => ({ ...r, guide: { data: guide, fetchedAt: new Date().toISOString() } })),
     getData,
     applySyncPlan,
     replaceData: (next) => {

@@ -1,6 +1,6 @@
 import { Minutes, WEEKDAY_LABELS, timeLabel, weekdayOf } from './calendar';
 import { formatDuration } from './format';
-import { DayPlan, PACES, PlaceCatalog, Stop, Trip, dayIndexOf, isOpenOn, stopCount, stopEnd, updateDay } from './model';
+import { DayPlan, PACES, PlaceCatalog, Stop, Trip, dayIndexOf, isOpenOn, sortStops, stopCount, stopEnd, updateDay } from './model';
 import { TRAVEL_MODE_LABEL, distanceKm, legBetween } from './travel';
 
 export type Severity = 'CRITICA' | 'ATENCAO';
@@ -136,7 +136,7 @@ export class ItineraryValidator {
           ...d,
           stops: d.stops.filter((s) => s.placeId !== fix.placeId),
         }));
-        return updateDay(removed, fix.toDay, (d) => ({ ...d, stops: [...d.stops, { ...stop, start: fix.newStart }] }));
+        return updateDay(removed, fix.toDay, (d) => ({ ...d, stops: sortStops([...d.stops, { ...stop, start: fix.newStart }]) }));
       }
       case 'REPLACE':
         return updateDay(trip, fix.day, (d) => ({
@@ -225,16 +225,20 @@ export class ItineraryValidator {
       const to = this.catalog.get(b.placeId);
       const leg = legBetween(from.location, to.location);
       const gap = b.start - stopEnd(a);
-      if (!leg || gap >= leg.minutes) continue;
-      const missing = Math.ceil((leg.minutes - gap) / 5) * 5;
+      // Sem coordenadas não dá para estimar o trajeto, mas paradas sobrepostas são sempre um problema.
+      const needed = leg ? leg.minutes : 0;
+      if (gap >= needed) continue;
+      const missing = Math.ceil((needed - gap) / 5) * 5;
       issues.push({
         id: `DESLOCAMENTO-${dayIndex}-${b.placeId}`,
         kind: 'DESLOCAMENTO',
         severity: 'ATENCAO',
         dayIndex,
         placeId: b.placeId,
-        title: `Não dá tempo de chegar a ${to.name}`,
-        detail: `São cerca de ${leg.minutes} min ${TRAVEL_MODE_LABEL[leg.mode]} desde ${from.name}, e o intervalo é de ${Math.max(gap, 0)} min.`,
+        title: leg ? `Não dá tempo de chegar a ${to.name}` : `${to.name} começa antes de ${from.name} terminar`,
+        detail: leg
+          ? `São cerca de ${leg.minutes} min ${TRAVEL_MODE_LABEL[leg.mode]} desde ${from.name}, e o intervalo é de ${Math.max(gap, 0)} min.`
+          : `As duas paradas se sobrepõem em ${-gap} min.`,
         fixDescription: `Adiar ${to.name} e as paradas seguintes em ${formatDuration(missing)}.`,
         fix: { type: 'SHIFT', day: dayIndex, fromIndex: i + 1, minutes: missing },
       });

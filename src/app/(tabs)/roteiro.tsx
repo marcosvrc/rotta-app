@@ -187,6 +187,16 @@ export default function ItineraryScreen() {
             Adicionar parada
           </Txt>
         </Pressable>
+        <Pressable
+          onPress={() => router.push({ pathname: '/sugerir', params: { day: String(selectedDay) } })}
+          accessibilityRole="button"
+          style={[styles.suggest, { backgroundColor: p.tint }]}
+        >
+          <Ionicons name="sparkles" size={18} color={p.ink} />
+          <Txt weight="semibold" color={p.ink}>
+            Sugerir paradas com IA
+          </Txt>
+        </Pressable>
         <Txt size={12} color={colors.muted} style={{ marginTop: 16 }}>
           Distâncias estimadas em linha reta. Lugares criados por você não têm mapa até a integração com o Google Maps.
         </Txt>
@@ -234,6 +244,15 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingBottom: 120 },
   statsRow: { flexDirection: 'row', gap: 18, marginTop: 10 },
   leg: { marginLeft: 64, marginVertical: 6 },
+  suggest: {
+    marginTop: 10,
+    height: 48,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   rainToggle: {
     flexDirection: 'row',
     alignItems: 'center',

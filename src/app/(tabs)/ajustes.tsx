@@ -179,10 +179,10 @@ export default function SettingsScreen() {
         <SectionTitle>Sobre</SectionTitle>
         <Card>
           <Txt weight="semibold" size={15}>
-            Rotta 0.4.0
+            Rotta 0.5.0
           </Txt>
           <Txt size={13} color={colors.muted}>
-            Versão de testes. Mapas, login e IA chegam nas próximas etapas.
+            Versão de testes. Mapas do Google chegam numa próxima etapa.
           </Txt>
           <Txt size={12} color={colors.muted} style={{ marginTop: 6 }}>
             Previsão do tempo: Open-Meteo.com (CC BY 4.0). Localização: GeoNames.

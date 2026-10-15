@@ -114,6 +114,14 @@ export default function TripsScreen() {
             onPress={() => router.navigate('/roteiro')}
           />
         </View>
+        <Card padding={0} style={{ marginTop: 12 }}>
+          <ListRow
+            icon="sparkles-outline"
+            title={`Guia de ${trip.destination}`}
+            subtitle={record.guide ? 'Comer, beber, transporte e cultura · salvo no aparelho' : 'O que comer, beber e como circular, com IA'}
+            onPress={() => router.push('/guia')}
+          />
+        </Card>
 
         <SectionTitle>Continue planejando</SectionTitle>
         <Card padding={0}>

@@ -1,5 +1,5 @@
 import { Minutes, TripDate, hm, plusDays } from './calendar';
-import { ALWAYS_OPEN, DayPlan, Pace, Place, PlaceKind, Stop, Trip, updateDay } from './model';
+import { ALWAYS_OPEN, DayPlan, Pace, Place, PlaceKind, Stop, Trip, sortStops, updateDay } from './model';
 
 /** Identificador curto e único o bastante para dados guardados no aparelho. */
 export function makeId(prefix: string): string {
@@ -107,7 +107,7 @@ export function addStop(trip: Trip, dayIndex: number, place: Place, start: Minut
   const withPlace = trip.places.some((p) => p.id === place.id) ? trip : { ...trip, places: [...trip.places, place] };
   const cleaned = removeStopEverywhere(withPlace, place.id);
   const stop: Stop = { placeId: place.id, start, durationMinutes };
-  return updateDay(cleaned, dayIndex, (d) => ({ ...d, stops: [...d.stops, stop] }));
+  return updateDay(cleaned, dayIndex, (d) => ({ ...d, stops: sortStops([...d.stops, stop]) }));
 }
 
 export function updateStop(
@@ -120,7 +120,7 @@ export function updateStop(
   const removed = updateDay(trip, dayIndex, (d) => ({ ...d, stops: d.stops.filter((s) => s.placeId !== placeId) }));
   return updateDay(removed, target, (d) => ({
     ...d,
-    stops: [...d.stops, { placeId, start: change.start, durationMinutes: change.durationMinutes }],
+    stops: sortStops([...d.stops, { placeId, start: change.start, durationMinutes: change.durationMinutes }]),
   }));
 }
 

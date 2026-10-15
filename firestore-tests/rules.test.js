@@ -82,6 +82,14 @@ describe('outras pessoas', () => {
     await assertFails(setDoc(doc(ana, 'config/geral'), { x: 1 }));
     await assertFails(getDocs(collection(ana, 'users')));
   });
+
+  test('cache e uso da IA são só do servidor', async () => {
+    const ana = as('ana');
+    await assertFails(getDoc(doc(ana, 'ai_cache/guia:lisboa:portugal')));
+    await assertFails(setDoc(doc(ana, 'ai_cache/guia:lisboa:portugal'), { json: '{}' }));
+    await assertFails(getDoc(doc(ana, 'ai_usage/ana/days/2026-10-14')));
+    await assertFails(setDoc(doc(ana, 'ai_usage/ana/days/2026-10-14'), { count: 0 }));
+  });
 });
 
 describe('formato do documento', () => {
