@@ -8,7 +8,7 @@ import { Card, ListRow, PrimaryButton, ScreenHeader, SectionTitle, Segmented, To
 import { PACES, Pace } from '@/core/model';
 import { useAccount } from '@/state/account';
 import { pickBackup, shareBackup } from '@/state/backup';
-import { remindersSupported, requestReminderPermission } from '@/state/notifications';
+import { remindersSupported, remindersUnavailableReason, requestReminderPermission } from '@/state/notifications';
 import { useRotta } from '@/state/rotta';
 import { ACCENT_OPTIONS, colors } from '@/theme';
 
@@ -128,7 +128,7 @@ export default function SettingsScreen() {
         <Card>
           {!remindersSupported ? (
             <Txt size={13} color={colors.muted}>
-              Os lembretes funcionam no app do celular.
+              {remindersUnavailableReason}
             </Txt>
           ) : (
             <>
