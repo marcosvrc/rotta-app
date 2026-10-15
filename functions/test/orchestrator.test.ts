@@ -89,6 +89,47 @@ describe('guia do destino', () => {
   });
 });
 
+describe('respostas fora do padrão', () => {
+  it('corta textos longos e ignora seção desconhecida no guia', async () => {
+    const reply = JSON.stringify({
+      summary: 'Resumo.',
+      sections: [
+        { key: 'comer', items: Array.from({ length: 12 }, (_, i) => ({ name: `Prato ${i}`, description: 'x'.repeat(400) })) },
+        { key: 'compras', items: [{ name: 'Loja', description: 'Fora das seções.' }] },
+      ],
+    });
+    const { d } = deps([reply]);
+    const r = await runTask({ task: 'guia_destino', input: { destination: 'Porto', country: '' } }, d);
+    const data = r.data as { sections: { key: string; items: { description: string }[] }[] };
+    expect(data.sections.map((s) => s.key)).toEqual(['comer']);
+    expect(data.sections[0].items).toHaveLength(8);
+    expect(data.sections[0].items[0].description.length).toBeLessThanOrEqual(300);
+  });
+
+  it('resposta cortada por falta de tokens tenta de novo com o dobro', async () => {
+    const calls: ChatRequest[] = [];
+    let n = 0;
+    const d: Deps = {
+      ...deps([]).d,
+      llm: async (req) => {
+        calls.push(req);
+        n++;
+        return n === 1
+          ? { text: '{"summary": "Corta', promptTokens: 1, completionTokens: 1, cost: 0, finishReason: 'length' }
+          : { text: '{"summary": "Ok.", "sections": [{"key": "dicas", "items": [{"name": "A", "description": "B."}]}]}', promptTokens: 1, completionTokens: 1, cost: 0, finishReason: 'stop' };
+      },
+    };
+    await runTask({ task: 'guia_destino', input: { destination: 'Porto', country: '' } }, d);
+    expect(calls.map((c) => c.maxTokens)).toEqual([3000, 6000]);
+    expect(calls[1].user).toContain('foi cortada');
+  });
+
+  it('explica o motivo quando desiste', async () => {
+    const { d } = deps(['{"summary": ""}', 'nada']);
+    await expect(runTask({ task: 'guia_destino', input: { destination: 'Porto', country: '' } }, d)).rejects.toThrow(/summary.*\|.*JSON válido/);
+  });
+});
+
 describe('história do lugar', () => {
   it('sem artigo na Wikipedia não chama o modelo', async () => {
     const { d, calls } = deps([]);
@@ -142,10 +183,18 @@ describe('sugerir paradas', () => {
     expect(names).toEqual(['Oceanário', 'Museu do Azulejo']);
   });
 
-  it('recusa tipo de lugar desconhecido', async () => {
-    const reply = '{"suggestions": [{"name": "X", "kind": "Cassino", "indoor": true, "start": "10:00", "durationMinutes": 60, "why": "."}]}';
-    const { d } = deps([reply, reply]);
-    await expect(runTask({ task: 'sugerir_paradas', input }, d)).rejects.toThrow();
+  it('aproveita sugestões com pequenos desvios e descarta as inválidas', async () => {
+    const reply = JSON.stringify({
+      suggestions: [
+        { name: 'Cassino', kind: 'Cassino', indoor: true, start: '9:30', durationMinutes: '90', why: 'Tipo desconhecido vira Outro.' },
+        { name: 'Sem horário', kind: 'Museu', indoor: true, why: 'Falta o start.' },
+      ],
+    });
+    const { d } = deps([reply]);
+    const r = await runTask({ task: 'sugerir_paradas', input: { ...input, existing: [] } }, d);
+    expect((r.data as { suggestions: unknown[] }).suggestions).toEqual([
+      { name: 'Cassino', kind: 'Outro', indoor: true, start: '09:30', durationMinutes: 90, why: 'Tipo desconhecido vira Outro.' },
+    ]);
   });
 
   it('cleanSuggestions tira repetidos', () => {

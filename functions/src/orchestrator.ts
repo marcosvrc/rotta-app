@@ -60,26 +60,40 @@ function fonte(w: WikiText | null): string {
   return w ? `<fonte titulo="${w.source.title}">\n${w.text}\n</fonte>` : '(nenhuma fonte encontrada)';
 }
 
-/** Chama o modelo e valida a resposta. Se vier fora do formato, pede uma correção uma única vez. */
+export class FormatError extends Error {}
+
+/**
+ * Chama o modelo e valida a resposta. Se vier fora do formato, pede uma correção uma única vez.
+ * Resposta cortada por falta de tokens ganha o dobro de espaço na segunda tentativa.
+ */
 async function ask<T>(deps: Deps, task: AiTask, model: string, system: string, user: string, schema: z.ZodType<T>, maxTokens: number): Promise<T> {
   let prompt = user;
+  let tokens = maxTokens;
+  const problems: string[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await deps.llm({ model, system, user: prompt, maxTokens });
+    const result = await deps.llm({ model, system, user: prompt, maxTokens: tokens });
     deps.onUsage?.(task, result);
     let problem: string;
-    try {
-      const parsed = schema.safeParse(parseModelJson(result.text));
-      if (parsed.success) return parsed.data;
-      problem = parsed.error.issues
-        .slice(0, 5)
-        .map((i) => `${i.path.join('.') || 'raiz'}: ${i.message}`)
-        .join('; ');
-    } catch {
-      problem = 'a resposta não era um JSON válido';
+    if (result.finishReason === 'length') {
+      problem = `resposta cortada no limite de ${tokens} tokens`;
+      tokens *= 2;
+      prompt = `${user}\n\nSua resposta anterior ficou longa demais e foi cortada. Seja mais breve e responda só com o JSON.`;
+    } else {
+      try {
+        const parsed = schema.safeParse(parseModelJson(result.text));
+        if (parsed.success) return parsed.data;
+        problem = parsed.error.issues
+          .slice(0, 5)
+          .map((i) => `${i.path.join('.') || 'raiz'}: ${i.message}`)
+          .join('; ');
+      } catch {
+        problem = 'a resposta não era um JSON válido';
+      }
+      prompt = `${user}\n\nSua resposta anterior não seguiu o formato (${problem}). Responda de novo, só com o JSON correto.`;
     }
-    prompt = `${user}\n\nSua resposta anterior não seguiu o formato (${problem}). Responda de novo, só com o JSON correto.`;
+    problems.push(problem);
   }
-  throw new Error(`Modelo não respondeu no formato esperado (${task})`);
+  throw new FormatError(`Modelo não respondeu no formato esperado (${task}): ${problems.join(' | ')}`);
 }
 
 async function explainIssue(deps: Deps, input: ExplainIssueInput): Promise<TaskResult<'explicar_alerta'>> {
@@ -125,9 +139,9 @@ async function guide(deps: Deps, input: GuideInput): Promise<TaskResult<'guia_de
     fonte(voyage),
     '',
     'Formato: {"summary": "2 frases sobre o destino", "sections": [{"key": "comer", "items": [{"name": "...", "description": "..."}]}]}.',
-    'Use as seções comer, beber, transporte, cultura e dicas, com 3 a 6 itens cada. Descrições com até 2 frases.',
+    'Use as seções comer, beber, transporte, cultura e dicas, com 3 a 5 itens cada. Cada descrição com 1 frase curta.',
   ].join('\n');
-  const parsed = await ask(deps, 'guia_destino', deps.models.fast, BASE_RULES, user, guideModelSchema, 1800);
+  const parsed = await ask(deps, 'guia_destino', deps.models.fast, BASE_RULES, user, guideModelSchema, 3000);
   const data: GuideOutput = { ...parsed, sources: voyage ? [voyage.source] : [] };
   await deps.cache.set(key, data, GUIDE_TTL_DAYS);
   return { data, cached: false };
@@ -154,7 +168,7 @@ async function story(deps: Deps, input: StoryInput): Promise<TaskResult<'histori
     '',
     'Formato: {"story": "2 parágrafos curtos, separados por uma linha em branco"}.',
   ].join('\n');
-  const parsed = await ask(deps, 'historia_lugar', deps.models.fast, BASE_RULES, user, storyModelSchema, 700);
+  const parsed = await ask(deps, 'historia_lugar', deps.models.fast, BASE_RULES, user, storyModelSchema, 1000);
   const data: StoryOutput =
     parsed.story.trim() === 'SEM_FONTE' ? { found: false, story: '' } : { found: true, story: parsed.story, source: wiki.source };
   await deps.cache.set(key, data, STORY_TTL_DAYS);
@@ -204,7 +218,7 @@ async function suggest(deps: Deps, input: SuggestInput): Promise<TaskResult<'sug
   ]
     .filter(Boolean)
     .join('\n');
-  const parsed = await ask(deps, 'sugerir_paradas', deps.models.strong, BASE_RULES, user, suggestModelSchema, 1500);
+  const parsed = await ask(deps, 'sugerir_paradas', deps.models.strong, BASE_RULES, user, suggestModelSchema, 2000);
   return {
     data: { suggestions: cleanSuggestions(input, parsed.suggestions), sources: voyage ? [voyage.source] : ([] as Source[]) },
     cached: false,

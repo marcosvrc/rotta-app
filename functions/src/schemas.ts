@@ -44,41 +44,59 @@ export const requestSchema = z.discriminatedUnion('task', [
   }),
 ]);
 
-/** Saídas do modelo. Se não baterem com o formato, o orquestrador pede para o modelo corrigir uma vez. */
-export const explainSchema = z.object({
-  explanation: text(600),
-  tip: text(300),
-});
-
-export const guideModelSchema = z.object({
-  summary: text(500),
-  sections: z
-    .array(
-      z.object({
-        key: z.enum(['comer', 'beber', 'transporte', 'cultura', 'dicas']),
-        items: z.array(z.object({ name: text(80), description: text(300) })).min(1).max(8),
+/**
+ * Saídas do modelo. São tolerantes com excessos (texto longo demais, itens a mais, seção desconhecida):
+ * cortam em vez de recusar. Só recusam o que não dá para aproveitar, e aí o orquestrador pede correção uma vez.
+ */
+const clip = (max: number) => z.string().trim().min(1).transform((v) => (v.length > max ? `${v.slice(0, max - 1).trimEnd()}…` : v));
+const upTo = <T extends z.ZodType>(item: T, max: number) =>
+  z
+    .array(z.unknown())
+    .transform((list) =>
+      list.flatMap((x) => {
+        const r = item.safeParse(x);
+        return r.success ? [r.data as z.output<T>] : [];
       }),
     )
-    .min(1)
-    .max(5),
+    .refine((list) => list.length > 0, 'nenhum item válido')
+    .transform((list) => list.slice(0, max));
+
+export const explainSchema = z.object({
+  explanation: clip(600),
+  tip: clip(300),
+});
+
+const minutes = z.coerce.number().transform((v) => Math.min(300, Math.max(15, Math.round(v))));
+
+export const guideModelSchema = z.object({
+  summary: clip(500),
+  sections: upTo(
+    z.object({
+      key: z.enum(['comer', 'beber', 'transporte', 'cultura', 'dicas']),
+      items: upTo(z.object({ name: clip(80), description: clip(300) }), 8),
+    }),
+    5,
+  ),
 });
 
 export const storyModelSchema = z.object({
-  story: text(1500),
+  story: clip(1500),
 });
 
 export const suggestModelSchema = z.object({
-  suggestions: z
-    .array(
-      z.object({
-        name: text(120),
-        kind: z.enum(AI_PLACE_KINDS),
-        indoor: z.boolean(),
-        start: hhmm,
-        durationMinutes: z.number().int().min(15).max(300),
-        why: text(240),
-      }),
-    )
-    .min(1)
-    .max(6),
+  suggestions: upTo(
+    z.object({
+      name: clip(120),
+      kind: z.enum(AI_PLACE_KINDS).catch('Outro'),
+      indoor: z.boolean(),
+      start: z
+        .string()
+        .trim()
+        .transform((v) => (/^\d:\d\d$/.test(v) ? `0${v}` : v))
+        .pipe(hhmm),
+      durationMinutes: minutes,
+      why: clip(240),
+    }),
+    6,
+  ),
 });

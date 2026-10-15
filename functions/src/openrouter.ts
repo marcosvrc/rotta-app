@@ -13,6 +13,8 @@ export interface ChatResult {
   completionTokens: number;
   /** Custo em créditos do OpenRouter, quando informado. */
   cost: number;
+  /** "length" quando a resposta foi cortada por falta de tokens. */
+  finishReason?: string;
 }
 
 export type Llm = (req: ChatRequest) => Promise<ChatResult>;
@@ -61,7 +63,7 @@ export function openRouter(apiKey: string, fetcher: PostFetch, baseUrl = 'https:
       });
       if (!res.ok) throw new LlmError(`OpenRouter respondeu ${res.status}`, res.status === 429 || res.status >= 500);
       const body = (await res.json()) as {
-        choices?: { message?: { content?: string }; error?: { message?: string } }[];
+        choices?: { message?: { content?: string }; error?: { message?: string }; finish_reason?: string }[];
         usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
       };
       const choice = body.choices?.[0];
@@ -73,6 +75,7 @@ export function openRouter(apiKey: string, fetcher: PostFetch, baseUrl = 'https:
         promptTokens: body.usage?.prompt_tokens ?? 0,
         completionTokens: body.usage?.completion_tokens ?? 0,
         cost: body.usage?.cost ?? 0,
+        finishReason: choice?.finish_reason,
       };
     } catch (e) {
       if (e instanceof LlmError) throw e;
