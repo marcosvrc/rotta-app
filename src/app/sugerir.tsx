@@ -88,7 +88,10 @@ export default function SuggestScreen() {
 
         {result && result.suggestions.length > 0 && (
           <>
-            <Card padding={0} style={{ marginTop: 16 }}>
+            <Txt size={13} color={colors.muted} style={{ marginTop: 16, marginLeft: 4 }}>
+              Toque para marcar ou desmarcar. As marcadas entram no roteiro nos horários sugeridos.
+            </Txt>
+            <Card padding={0} style={{ marginTop: 8 }}>
               {result.suggestions.map((s, i) => (
                 <View key={`${s.name}-${i}`}>
                   {i > 0 && <Divider />}
@@ -115,6 +118,12 @@ export default function SuggestScreen() {
                 </View>
               ))}
             </Card>
+            <PrimaryButton
+              label={picked.size === 0 ? 'Marque ao menos uma sugestão' : `Adicionar ${picked.size} ao roteiro`}
+              onPress={() => picked.size > 0 && add()}
+              filled={picked.size > 0}
+              style={{ marginTop: 14 }}
+            />
             <SourceLinks sources={result.sources} label="Lugares do guia" />
             <Txt size={12} color={colors.muted} style={{ marginTop: 6 }}>
               Sugestão da IA. Horários de funcionamento ainda não são conferidos: confira antes de ir. O validador do app checa
@@ -123,15 +132,6 @@ export default function SuggestScreen() {
           </>
         )}
       </ScrollView>
-      {result && result.suggestions.length > 0 && (
-        <View style={styles.footer}>
-          <PrimaryButton
-            label={picked.size === 0 ? 'Escolha ao menos uma' : `Adicionar ${picked.size} ao roteiro`}
-            onPress={() => picked.size > 0 && add()}
-            style={{ flex: 1 }}
-          />
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -141,5 +141,4 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   suggestion: { flexDirection: 'row', gap: 12, padding: 14, alignItems: 'flex-start' },
-  footer: { paddingHorizontal: 20, paddingVertical: 12, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.line },
 });
