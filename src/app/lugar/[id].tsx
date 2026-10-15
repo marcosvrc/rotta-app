@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, Linking, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiButton, AiErrorText, useAiCall } from '@/components/ai';
@@ -9,9 +9,11 @@ import { CityIllustration } from '@/components/illustrations';
 import { Badge, Card, PrimaryButton, Segmented, Txt } from '@/components/ui';
 import { timeLabel } from '@/core/calendar';
 import { formatDuration } from '@/core/format';
-import { dayIndexOf, hoursLabel } from '@/core/model';
+import { Place, dayIndexOf, hoursLabel } from '@/core/model';
+import { photoCredit } from '@/core/photos';
 import { StoryOutput } from '@/core/ai';
 import { askAi } from '@/state/cloud/ai';
+import { fetchPlacePhotos } from '@/state/photos';
 import { useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
@@ -24,6 +26,29 @@ export default function PlaceScreen() {
   const place = trip.places.find((x) => x.id === id);
   const ai = useAiCall<StoryOutput>();
   const [storyMissing, setStoryMissing] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+
+  // Fotos do Commons: busca uma vez por lugar e guarda (com autor e licença) junto da viagem.
+  const needsPhotos = !!place && !place.photos;
+  const placeName = place?.name ?? '';
+  useEffect(() => {
+    if (!needsPhotos) return;
+    let alive = true;
+    fetchPlacePhotos(placeName, trip.destination)
+      .then((photos) => {
+        if (!alive) return;
+        updateTrip((t) => ({
+          ...t,
+          places: t.places.map((x) => (x.id === id ? { ...x, photos: { photos, fetchedAt: new Date().toISOString() } } : x)),
+        }));
+      })
+      .catch(() => alive && setPhotoError(true));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsPhotos, placeName]);
+  const photoStatus: PhotoStatus = place?.photos ? 'pronto' : photoError ? 'sem-conexao' : 'buscando';
 
   if (!place) {
     return (
@@ -58,8 +83,8 @@ export default function PlaceScreen() {
   return (
     <View style={styles.screen}>
       <View>
-        <CityIllustration height={240} />
-        <SafeAreaView edges={['top']} style={styles.overlay}>
+        <PhotoHeader place={place} status={photoStatus} />
+        <SafeAreaView edges={['top']} style={styles.overlay} pointerEvents="box-none">
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/roteiro'))}
             accessibilityRole="button"
@@ -69,12 +94,6 @@ export default function PlaceScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.ink} />
           </Pressable>
         </SafeAreaView>
-        <Badge
-          label={place.custom ? 'Lugar criado por você' : 'Foto do Google Places'}
-          bg="rgba(27,34,48,0.72)"
-          fg="#FFFFFF"
-          style={styles.photoBadge}
-        />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -180,6 +199,61 @@ export default function PlaceScreen() {
   );
 }
 
+type PhotoStatus = 'buscando' | 'pronto' | 'sem-conexao';
+
+/** Fotos do lugar em carrossel, com crédito do autor e licença (exigido pelo Commons). */
+function PhotoHeader({ place, status }: { place: Place; status: PhotoStatus }) {
+  const { width } = useWindowDimensions();
+  const [index, setIndex] = useState(0);
+  const photos = place.photos?.photos ?? [];
+
+  if (photos.length === 0) {
+    const label = status === 'buscando' ? 'Buscando fotos…' : status === 'sem-conexao' ? 'Sem conexão para buscar fotos' : 'Sem fotos deste lugar';
+    return (
+      <View>
+        <CityIllustration height={240} />
+        <Badge label={label} bg="rgba(27,34,48,0.72)" fg="#FFFFFF" style={styles.photoBadge} />
+      </View>
+    );
+  }
+
+  const current = photos[Math.min(index, photos.length - 1)];
+  return (
+    <View style={{ height: 260, backgroundColor: colors.night }}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+        onScroll={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+        scrollEventThrottle={64}
+      >
+        {photos.map((ph) => (
+          <Image
+            key={ph.sourceUrl}
+            source={{ uri: ph.url }}
+            style={{ width, height: 260 }}
+            resizeMode="cover"
+            accessibilityLabel={`Foto de ${place.name}`}
+          />
+        ))}
+      </ScrollView>
+      <View style={styles.photoFooter} pointerEvents="box-none">
+        <Pressable onPress={() => Linking.openURL(current.sourceUrl)} accessibilityRole="link" style={{ flex: 1 }}>
+          <Txt size={11} color="#FFFFFF" numberOfLines={1}>
+            {photoCredit(current)}
+          </Txt>
+        </Pressable>
+        {photos.length > 1 && (
+          <Txt size={11} weight="semibold" color="#FFFFFF">
+            {`${Math.min(index, photos.length - 1) + 1}/${photos.length}`}
+          </Txt>
+        )}
+      </View>
+    </View>
+  );
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
@@ -204,6 +278,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   photoBadge: { position: 'absolute', right: 12, bottom: 12 },
+  photoFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(27,34,48,0.6)',
+  },
   content: { padding: 20, paddingBottom: 32 },
   tip: { backgroundColor: colors.card, borderRadius: 16, padding: 14 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },

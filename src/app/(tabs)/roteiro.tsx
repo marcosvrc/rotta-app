@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { Fragment, useCallback } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlaceAvatar } from '@/components/illustrations';
@@ -174,7 +174,11 @@ export default function ItineraryScreen() {
                   }
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <PlaceAvatar name={place.name} seed={place.kind.length + place.name.length} />
+                    {place.photos?.photos[0] ? (
+                      <Image source={{ uri: place.photos.photos[0].url }} style={styles.thumb} accessibilityIgnoresInvertColors />
+                    ) : (
+                      <PlaceAvatar name={place.name} seed={place.kind.length + place.name.length} />
+                    )}
                     <View style={{ flex: 1 }}>
                       <Txt weight="semibold" size={15}>
                         {place.name}
@@ -278,6 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  thumb: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.line },
   share: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
   rainToggle: {
     flexDirection: 'row',

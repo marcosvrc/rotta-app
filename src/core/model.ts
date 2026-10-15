@@ -1,3 +1,4 @@
+import type { PlacePhotos } from './photos';
 import { MINUTES_IN_DAY, Minutes, TripDate, WEEKDAYS, WEEKDAY_LABELS, Weekday, rangeLabel, timeLabel } from './calendar';
 import { FoodLevel, StayLevel } from './cost';
 
@@ -80,6 +81,8 @@ export interface Place {
   sourceUrl?: string;
   /** Criado pelo usuário, sem dados do Google Places. */
   custom?: boolean;
+  /** Fotos do Wikimedia Commons, com autor e licença. */
+  photos?: PlacePhotos;
 }
 
 export class PlaceCatalog {
