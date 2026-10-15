@@ -24,6 +24,10 @@ const MODEL_STRONG = defineString('AI_MODEL_STRONG', { default: 'anthropic/claud
 const DAILY_LIMIT = defineInt('AI_DAILY_LIMIT', { default: 30 });
 /** Para testes com um servidor falso no emulador. Vazio usa o OpenRouter. */
 const OPENROUTER_BASE_URL = defineString('OPENROUTER_BASE_URL', { default: '' });
+/** Busca na web (Exa via OpenRouter, ~US$ 0,007 por busca): on ou off. */
+const AI_WEB_SEARCH = defineString('AI_WEB_SEARCH', { default: 'on' });
+/** Sites que a busca ignora (fóruns, redes sociais e agregadores de anúncio). */
+const WEB_EXCLUDE = ['pinterest.com', 'quora.com', 'facebook.com', 'instagram.com', 'tiktok.com', 'reddit.com'];
 /** Raciocínio interno de cada modelo: off, low, medium ou high. O Sonnet 5.5 não aceita off. */
 const AI_REASONING_FAST = defineString('AI_REASONING_FAST', { default: 'off' });
 const AI_REASONING_STRONG = defineString('AI_REASONING_STRONG', { default: 'low' });
@@ -84,6 +88,7 @@ export const ia = onCall(
         wikipedia: (q) => safeSource('wikipedia', () => wikipediaSummary(fetch, q)),
         wikivoyage: (d) => safeSource('wikivoyage', () => wikivoyageText(fetch, d)),
         cache: firestoreCache(db),
+        web: AI_WEB_SEARCH.value() === 'off' ? null : { maxResults: 6, excludeDomains: WEB_EXCLUDE },
         onUsage: (_task, u) => {
           usage.tokens += u.promptTokens + u.completionTokens;
           usage.cost += u.cost;

@@ -34,7 +34,7 @@ export default function GuideScreen() {
               {`O que comer, beber e como circular em ${trip.destination}`}
             </Txt>
             <Txt size={13} color={colors.muted} style={{ marginTop: 4 }}>
-              A IA monta o guia a partir do Wikivoyage e mostra a fonte. Depois de gerado, ele fica salvo para ler sem internet.
+              A IA pesquisa em sites oficiais de turismo e guias de viagem e mostra as fontes. Depois de gerado, o guia fica salvo para ler sem internet.
             </Txt>
             <View style={{ marginTop: 12 }}>
               <AiButton label="Gerar guia" onPress={generate} loading={ai.loading} />
@@ -70,9 +70,13 @@ export default function GuideScreen() {
               );
             })}
             <SourceLinks sources={guide.sources} />
+            <View style={{ marginTop: 14 }}>
+              <AiButton label="Atualizar guia" onPress={generate} loading={ai.loading} />
+              <AiErrorText error={ai.error} />
+            </View>
             <Txt size={12} color={colors.muted} style={{ marginTop: 8 }}>
               {guide.sources.length > 0
-                ? 'Texto gerado por IA a partir da fonte acima. Confira preços e horários no local.'
+                ? 'Texto gerado por IA a partir das fontes acima. Confira preços e horários no local.'
                 : 'Não havia guia de referência para este destino: o texto é de conhecimento geral da IA. Confira antes de seguir.'}
             </Txt>
           </>

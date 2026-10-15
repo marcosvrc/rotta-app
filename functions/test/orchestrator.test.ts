@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { SuggestInput } from '../../src/core/ai';
-import { ChatRequest, LlmError, openRouter, parseModelJson } from '../src/openrouter';
-import { Cache, Deps, cleanSuggestions, normalizeKey, runTask } from '../src/orchestrator';
+import { ChatRequest, ChatResult, LlmError, openRouter, parseCitations, parseModelJson } from '../src/openrouter';
+import { Cache, Deps, cleanSuggestions, mergeSources, normalizeKey, runTask } from '../src/orchestrator';
 import { requestSchema } from '../src/schemas';
 import { wikipediaSummary, wikivoyageText } from '../src/wiki';
 
@@ -26,12 +26,13 @@ function deps(replies: string[], overrides: Partial<Deps> = {}) {
       calls.push(req);
       const text = replies.shift();
       if (text === undefined) throw new Error('sem resposta');
-      return { text, promptTokens: 10, completionTokens: 5, cost: 0.001 };
+      return { text, promptTokens: 10, completionTokens: 5, cost: 0.001, citations: [] };
     },
     models: { fast: 'rapido', strong: 'forte', fastReasoning: 'off', strongReasoning: 'low' },
     wikipedia: async () => null,
     wikivoyage: async () => null,
     cache: memoryCache(),
+    web: null,
     ...overrides,
   };
   return { d, calls };
@@ -115,8 +116,8 @@ describe('respostas fora do padrão', () => {
         calls.push(req);
         n++;
         return n === 1
-          ? { text: '{"summary": "Corta', promptTokens: 1, completionTokens: 1, cost: 0, finishReason: 'length' }
-          : { text: '{"summary": "Ok.", "sections": [{"key": "dicas", "items": [{"name": "A", "description": "B."}]}]}', promptTokens: 1, completionTokens: 1, cost: 0, finishReason: 'stop' };
+          ? { text: '{"summary": "Corta', promptTokens: 1, completionTokens: 1, cost: 0, finishReason: 'length', citations: [] }
+          : { text: '{"summary": "Ok.", "sections": [{"key": "dicas", "items": [{"name": "A", "description": "B."}]}]}', promptTokens: 1, completionTokens: 1, cost: 0, finishReason: 'stop', citations: [] };
       },
     };
     await runTask({ task: 'guia_destino', input: { destination: 'Porto', country: '' } }, d);
@@ -131,8 +132,8 @@ describe('respostas fora do padrão', () => {
       llm: async (req) => {
         calls.push(req);
         return calls.length === 1
-          ? { text: '', promptTokens: 1, completionTokens: 2000, cost: 0, finishReason: 'length' }
-          : { text: '{"explanation": "Ok.", "tip": "Faça."}', promptTokens: 1, completionTokens: 9, cost: 0, finishReason: 'stop' };
+          ? { text: '', promptTokens: 1, completionTokens: 2000, cost: 0, finishReason: 'length', citations: [] }
+          : { text: '{"explanation": "Ok.", "tip": "Faça."}', promptTokens: 1, completionTokens: 9, cost: 0, finishReason: 'stop', citations: [] };
       },
     };
     const input = { destination: 'L', dayLabel: 'D', placeName: 'P', issueKind: 'K', issueText: 'T' };
@@ -305,5 +306,86 @@ describe('Wikimedia', () => {
     });
     const r = await wikivoyageText(fetcher, 'Lisboa');
     expect(r?.source.title).toBe('Wikivoyage: Lisbon');
+  });
+});
+
+describe('busca na web', () => {
+  const web = { maxResults: 6, excludeDomains: ['pinterest.com'] };
+  const site = { title: 'Visit Portugal', url: 'https://www.visitportugal.com/pt-pt/lisboa' };
+  const reply = (text: string, citations = [site]): ChatResult => ({ text, promptTokens: 1, completionTokens: 1, cost: 0.01, citations });
+
+  it('guia usa a web e junta as fontes citadas com o Wikivoyage', async () => {
+    const calls: ChatRequest[] = [];
+    const d: Deps = {
+      ...deps([]).d,
+      web,
+      wikivoyage: async () => voyage,
+      llm: async (req) => {
+        calls.push(req);
+        return reply('{"summary": "Ok.", "sections": [{"key": "comer", "items": [{"name": "A", "description": "B."}]}]}', [site, site]);
+      },
+    };
+    const r = await runTask({ task: 'guia_destino', input: { destination: 'Lisboa', country: 'Portugal' } }, d);
+    expect(calls[0].web).toEqual(web);
+    expect(calls[0].user).toContain('Pesquise na web');
+    expect((r.data as { sources: unknown[] }).sources).toEqual([site, voyage.source]);
+  });
+
+  it('história tenta a web quando a Wikipedia não tem artigo, mas exige página citada', async () => {
+    const d: Deps = { ...deps([]).d, web, llm: async () => reply('{"story": "Aberta em 1906."}') };
+    const r = await runTask({ task: 'historia_lugar', input: { placeName: 'Livraria Lello', city: 'Porto', country: 'Portugal' } }, d);
+    expect(r.data).toEqual({ found: true, story: 'Aberta em 1906.', source: site });
+
+    const semCitacao: Deps = { ...deps([]).d, web, llm: async () => reply('{"story": "Texto sem fonte."}', []) };
+    const r2 = await runTask({ task: 'historia_lugar', input: { placeName: 'Bar X', city: 'Porto', country: '' } }, semCitacao);
+    expect(r2.data).toEqual({ found: false, story: '' });
+  });
+
+  it('com a Wikipedia não gasta busca na web', async () => {
+    const calls: ChatRequest[] = [];
+    const wiki = { text: 'Fato.', source: { title: 'Wikipedia: X', url: 'https://pt.wikipedia.org/wiki/X' } };
+    const d: Deps = {
+      ...deps([]).d,
+      web,
+      wikipedia: async () => wiki,
+      llm: async (req) => {
+        calls.push(req);
+        return reply('{"story": "Fato contado."}', []);
+      },
+    };
+    await runTask({ task: 'historia_lugar', input: { placeName: 'X', city: 'Lisboa', country: '' } }, d);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].web).toBeUndefined();
+  });
+
+  it('envia o plugin web ao OpenRouter e lê as citações', async () => {
+    const fetcher = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '{"a":1}',
+              annotations: [
+                { type: 'url_citation', url_citation: { url: 'https://www.visitportugal.com/x?utm=1', title: 'Visit Portugal' } },
+                { type: 'url_citation', url_citation: { url: 'https://www.visitportugal.com/x', title: 'Repetida' } },
+                { type: 'file', url: 'ignorar' },
+              ],
+            },
+          },
+        ],
+      }),
+    }));
+    const llm = openRouter('k', fetcher);
+    const r = await llm({ model: 'm', reasoning: 'off', system: 's', user: 'u', maxTokens: 10, web });
+    const [, init] = fetcher.mock.calls[0] as unknown as [string, { body: string }];
+    expect(JSON.parse(init.body).plugins).toEqual([{ id: 'web', engine: 'exa', max_results: 6, exclude_domains: ['pinterest.com'] }]);
+    expect(r.citations).toEqual([{ title: 'Visit Portugal', url: 'https://www.visitportugal.com/x?utm=1' }]);
+    expect(parseCitations([{ type: 'url_citation', url_citation: { url: 'https://site.pt/a' } }])[0].title).toBe('site.pt');
+  });
+
+  it('junta fontes sem repetir', () => {
+    expect(mergeSources([site], [{ ...site, url: site.url + '/' }], [voyage.source])).toEqual([site, voyage.source]);
   });
 });

@@ -134,8 +134,8 @@ export default function PlaceScreen() {
           <View>
             <Txt color={colors.muted}>
               {storyMissing
-                ? 'A Wikipedia não tem um artigo sobre este lugar, então a IA não escreve uma história para ele.'
-                : 'Ainda não há história para este lugar. A IA resume o artigo da Wikipedia e mostra a fonte.'}
+                ? 'Não encontramos uma fonte confiável sobre este lugar, então a IA não escreve uma história para ele.'
+                : 'Ainda não há história para este lugar. A IA busca na Wikipedia e, se não achar, em sites oficiais, e mostra a fonte.'}
             </Txt>
             {!storyMissing && (
               <View style={{ marginTop: 12 }}>
@@ -148,7 +148,7 @@ export default function PlaceScreen() {
 
         {section === 'historia' && !!place.story && (
           <View>
-            <Badge label="Resumo com IA a partir da Wikipedia" bg={p.tint} fg={p.ink} />
+            <Badge label="Resumo com IA, com fonte" bg={p.tint} fg={p.ink} />
             <Txt size={16} style={{ marginTop: 10, lineHeight: 24 }}>
               {place.story}
             </Txt>

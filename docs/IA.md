@@ -17,9 +17,11 @@ App ──(login do Firebase)──> Cloud Function "ia" (São Paulo) ──> Op
 | Tarefa | Modelo | Fonte | Cache |
 | --- | --- | --- | --- |
 | Explicar alerta do validador | rápido | o próprio alerta | não |
-| Guia do destino | rápido | Wikivoyage (pt, depois en) | 30 dias por destino |
-| História do lugar | rápido | Wikipedia (pt, depois en); sem artigo, não gera | 90 dias por lugar |
-| Sugerir paradas do dia | forte | Wikivoyage | não |
+| Guia do destino | rápido | busca na web (sites oficiais e guias) + Wikivoyage | 30 dias por destino |
+| História do lugar | rápido | Wikipedia; sem artigo, busca na web; sem página citada, não gera | 90 dias por lugar |
+| Sugerir paradas do dia | forte | busca na web + Wikivoyage | não |
+
+A busca na web usa o plugin `web` do OpenRouter com o motor Exa (cerca de US$ 0,007 por busca, até 6 resultados) e ignora redes sociais e fóruns. Desligue com `AI_WEB_SEARCH=off`.
 
 Respostas que vêm do cache não contam no limite diário.
 
@@ -51,6 +53,7 @@ AI_MODEL_STRONG=anthropic/claude-sonnet-5.5
 AI_DAILY_LIMIT=30
 AI_REASONING_FAST=off
 AI_REASONING_STRONG=low
+AI_WEB_SEARCH=on
 ```
 
 `AI_REASONING_*` controla o raciocínio interno de cada modelo (`off`, `low`, `medium`, `high`). Os tokens de raciocínio contam no limite da resposta: com esforço alto, a resposta pode vir vazia. O Claude Sonnet 5.5 não aceita `off`; use `low`.
