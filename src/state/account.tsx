@@ -1,6 +1,9 @@
+import { httpsCallable } from 'firebase/functions';
 import {
+  EmailAuthProvider,
   User,
   createUserWithEmailAndPassword,
+  reauthenticateWithCredential,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -11,6 +14,7 @@ import { AppState } from 'react-native';
 
 import { authErrorMessage } from '@/core/account';
 import { syncOnce } from '@/core/sync';
+import { cloudFunctions } from '@/state/cloud/ai';
 import { cloudAuth } from '@/state/cloud/auth';
 import { cloudConfigured } from '@/state/cloud/config';
 import { firestoreRepo } from '@/state/cloud/repo';
@@ -30,6 +34,8 @@ interface AccountState {
   resetPassword: (email: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
+  /** Confirma a senha, apaga tudo na nuvem e a conta. Devolve a mensagem de erro, se houver. */
+  deleteAccount: (password: string) => Promise<string | null>;
 }
 
 const AccountContext = createContext<AccountState | null>(null);
@@ -64,7 +70,7 @@ function signature(data: ReturnType<ReturnType<typeof useRotta>['getData']>): st
 
 /** Login com e-mail e senha e sincronização das viagens com o Firestore. Sem configuração, fica desligado. */
 export function AccountProvider({ children }: { children: ReactNode }) {
-  const { data, getData, applySyncPlan } = useRotta();
+  const { data, getData, applySyncPlan, resetToSample } = useRotta();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(!cloudConfigured);
   const [status, setStatus] = useState<SyncStatus>(cloudConfigured ? 'parado' : 'desligado');
@@ -159,8 +165,25 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setLastSyncAt(null);
       },
       syncNow,
+      deleteAccount: async (password) => {
+        if (!user?.email) return 'Entre na sua conta.';
+        try {
+          await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+        } catch (e) {
+          return authErrorMessage(errorCode(e));
+        }
+        try {
+          await httpsCallable(cloudFunctions(), 'excluirConta', { timeout: 60_000 })({});
+        } catch {
+          return 'Não foi possível excluir agora. Confira a conexão e tente de novo.';
+        }
+        await firebaseSignOut(cloudAuth()).catch(() => undefined);
+        resetToSample();
+        setLastSyncAt(null);
+        return null;
+      },
     }),
-    [authReady, user, status, lastSyncAt, syncNow],
+    [authReady, user, status, lastSyncAt, syncNow, resetToSample],
   );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;

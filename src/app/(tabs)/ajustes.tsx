@@ -1,21 +1,34 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card, ListRow, PrimaryButton, ScreenHeader, SectionTitle, Segmented, ToggleChip, Txt, confirmAction } from '@/components/ui';
 import { PACES, Pace } from '@/core/model';
 import { useAccount } from '@/state/account';
 import { pickBackup, shareBackup } from '@/state/backup';
+import { remindersSupported, requestReminderPermission } from '@/state/notifications';
 import { useRotta } from '@/state/rotta';
 import { ACCENT_OPTIONS, colors } from '@/theme';
 
 const INTERESTS = ['História', 'Gastronomia', 'Natureza', 'Praia', 'Vida noturna', 'Compras', 'Arte'];
 
 export default function SettingsScreen() {
-  const { accentId, setAccentId, trip, updateTrip, interests, toggleInterest, data, lastSavedAt, resetToSample, replaceData } = useRotta();
+  const { accentId, setAccentId, trip, updateTrip, interests, toggleInterest, data, lastSavedAt, resetToSample, replaceData, setReminderSettings } = useRotta();
   const account = useAccount();
+  const reminders = data.settings.reminders;
+  const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const toggleReminders = async (on: boolean) => {
+    setReminderMessage(null);
+    if (!on) {
+      setReminderSettings({ enabled: false });
+      return;
+    }
+    const granted = await requestReminderPermission();
+    if (granted) setReminderSettings({ enabled: true });
+    else setReminderMessage('Permissão negada. Libere as notificações do Rotta nas configurações do celular.');
+  };
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
 
   const exportData = async () => {
@@ -111,6 +124,36 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
+        <SectionTitle>Lembretes</SectionTitle>
+        <Card>
+          {!remindersSupported ? (
+            <Txt size={13} color={colors.muted}>
+              Os lembretes funcionam no app do celular.
+            </Txt>
+          ) : (
+            <>
+              <SwitchRow
+                label="Avisar no celular"
+                hint={reminders.enabled ? 'Funciona sem internet, no horário do destino.' : 'Prazos do checklist, véspera das reservas e começo de cada dia.'}
+                value={reminders.enabled}
+                onChange={toggleReminders}
+              />
+              {reminders.enabled && (
+                <View style={{ marginTop: 8, gap: 4 }}>
+                  <SwitchRow label="Prazos do checklist" value={reminders.checklist} onChange={(v) => setReminderSettings({ checklist: v })} />
+                  <SwitchRow label="Reservas (véspera e 2h antes)" value={reminders.reservations} onChange={(v) => setReminderSettings({ reservations: v })} />
+                  <SwitchRow label="Começo de cada dia do roteiro" value={reminders.dayStart} onChange={(v) => setReminderSettings({ dayStart: v })} />
+                </View>
+              )}
+              {reminderMessage ? (
+                <Txt size={13} color={colors.criticalInk} style={{ marginTop: 6 }}>
+                  {reminderMessage}
+                </Txt>
+              ) : null}
+            </>
+          )}
+        </Card>
+
         <SectionTitle>Conta e nuvem</SectionTitle>
         <Card padding={0}>
           <ListRow
@@ -179,7 +222,7 @@ export default function SettingsScreen() {
         <SectionTitle>Sobre</SectionTitle>
         <Card>
           <Txt weight="semibold" size={15}>
-            Rotta 0.5.0
+            Rotta 0.6.0
           </Txt>
           <Txt size={13} color={colors.muted}>
             Versão de testes. Mapas do Google chegam numa próxima etapa.
@@ -202,3 +245,28 @@ const styles = StyleSheet.create({
   offlineIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.goodBg, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
 });
+
+function SwitchRow({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
+  const { palette: p } = useRotta();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 }}>
+      <View style={{ flex: 1 }}>
+        <Txt weight="semibold" size={15}>
+          {label}
+        </Txt>
+        {hint ? (
+          <Txt size={12} color={colors.muted}>
+            {hint}
+          </Txt>
+        ) : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        accessibilityLabel={label}
+        trackColor={{ true: p.accent, false: colors.line }}
+        thumbColor="#FFFFFF"
+      />
+    </View>
+  );
+}

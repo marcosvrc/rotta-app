@@ -1,10 +1,12 @@
 import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { defineInt, defineSecret, defineString } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 import { AiRequest, AiResponse } from '../../src/core/ai';
+import { deleteAccount, isRecentLogin } from './account';
 import { firestoreCache, recordUsage, usedToday } from './firestore';
 import { LlmError, openRouter } from './openrouter';
 import { runTask } from './orchestrator';
@@ -76,3 +78,19 @@ export const ia = onCall(
     }
   },
 );
+
+/** Apaga a conta e todos os dados do usuário na nuvem. Exige login feito nos últimos 5 minutos. */
+export const excluirConta = onCall({ region: 'southamerica-east1', maxInstances: 2, enforceAppCheck: false }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
+  if (!isRecentLogin(request.auth?.token.auth_time, Date.now())) {
+    throw new HttpsError('failed-precondition', 'Confirme a senha de novo para excluir a conta.');
+  }
+  const db = getFirestore();
+  await deleteAccount(uid, {
+    deleteTree: (path) => db.recursiveDelete(db.doc(path)),
+    deleteAuthUser: (id) => getAuth().deleteUser(id),
+  });
+  logger.info('conta excluída', { uid });
+  return { ok: true };
+});

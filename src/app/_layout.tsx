@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { AccountProvider } from '@/state/account';
+import { ReminderScheduler } from '@/state/ReminderScheduler';
 import { RottaProvider, useRotta } from '@/state/rotta';
 import { colors } from '@/theme';
 
@@ -22,6 +23,7 @@ export default function RootLayout() {
   return (
     <RottaProvider>
       <AccountProvider>
+        <ReminderScheduler />
         <AppStack />
       </AccountProvider>
     </RottaProvider>
@@ -57,6 +59,7 @@ function AppStack() {
         <Stack.Screen name="conta" />
         <Stack.Screen name="guia" />
         <Stack.Screen name="sugerir" />
+        <Stack.Screen name="divisao" />
       </Stack>
     </>
   );

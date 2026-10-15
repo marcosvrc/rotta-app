@@ -6,7 +6,7 @@ import { emulatorHost, firebaseApp } from './config';
 
 let functions: Functions | null = null;
 
-function cloudFunctions(): Functions {
+export function cloudFunctions(): Functions {
   if (functions) return functions;
   functions = getFunctions(firebaseApp(), 'southamerica-east1');
   if (emulatorHost) connectFunctionsEmulator(functions, emulatorHost, 5001);

@@ -56,6 +56,12 @@ O App Check faz o Firebase aceitar chamadas só do app original instalado da Pla
 
 Google Cloud > **Faturamento** > **Orçamentos e alertas**: crie um orçamento baixo (ex.: R$ 50/mês) com alertas em 50%, 90% e 100%. No OpenRouter, defina também um limite de crédito na chave.
 
+## Exclusão de conta
+
+Em Ajustes > Conta e nuvem > **Excluir conta e dados**. O app pede a senha de novo e chama a função `excluirConta`, que só aceita login feito nos últimos 5 minutos. Ela apaga `users/{uid}` (todas as viagens), `ai_usage/{uid}` e, por último, a conta no Firebase Auth. Depois o app limpa os dados do aparelho.
+
+Para a Play Store, também é preciso uma página na web explicando como pedir a exclusão (entra na etapa 5).
+
 ## Dados no aparelho
 
 Viagens, gastos, reservas e contatos do SOS ficam no armazenamento interno do app. Outros apps não conseguem ler, mas um celular com root consegue. Anexos (ingressos, QR codes) nunca sobem para a nuvem.

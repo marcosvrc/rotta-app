@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge, Card, Divider, PrimaryButton, ScreenHeader, SectionTitle, Segmented, Stepper, Txt, confirmAction } from '@/components/ui';
+import { Badge, Card, Divider, ListRow, PrimaryButton, ScreenHeader, SectionTitle, Segmented, Stepper, Txt, confirmAction } from '@/components/ui';
 import { shortDateLabel } from '@/core/calendar';
+import { formatMoney } from '@/core/currency';
+import { settle } from '@/core/split';
 import {
   EXPENSE_CATEGORY_LABEL,
   ExpenseCategory,
@@ -181,6 +183,7 @@ const CATEGORY_COLOR: Record<ExpenseCategory, string> = {
 function Spent() {
   const { trip, record, estimate, removeExpense, palette: p } = useRotta();
   const summary = summarizeExpenses(record.expenses, trip.days.length, estimate);
+  const split = settle(record.expenses, record.participants);
   const vsPlanned = summary.plannedTripBrl - summary.totalBrl;
   const maxDay = Math.max(summary.plannedPerDayBrl, ...summary.byDay, 1);
   const paymentColor: Record<PaymentMethod, string> = {
@@ -214,6 +217,18 @@ function Spent() {
       </View>
 
       <PrimaryButton label="Registrar gasto" onPress={() => newExpense()} style={{ marginTop: 12 }} />
+      <Card padding={0} style={{ marginTop: 12 }}>
+        <ListRow
+          icon="people-outline"
+          title="Dividir despesas"
+          subtitle={
+            record.participants.length < 2
+              ? 'Adicione quem vai junto e veja quem deve para quem'
+              : `${record.participants.length} pessoas · ${split.transfers.length === 0 ? 'contas em dia' : `${split.transfers.length} ${split.transfers.length === 1 ? 'acerto' : 'acertos'} pendentes`}`
+          }
+          onPress={() => router.push('/divisao')}
+        />
+      </Card>
 
       <SectionTitle>Por dia</SectionTitle>
       <Card>
@@ -295,7 +310,14 @@ function Spent() {
                           {e.description}
                         </Txt>
                         <Txt size={12} color={colors.muted}>
-                          {`${EXPENSE_CATEGORY_LABEL[e.category]} · ${PAYMENT_LABEL[e.payment]}`}
+                          {[
+                            e.currency && e.originalAmount !== undefined ? formatMoney(e.originalAmount, e.currency) : null,
+                            EXPENSE_CATEGORY_LABEL[e.category],
+                            PAYMENT_LABEL[e.payment],
+                            e.paidBy ? `pago por ${record.participants.find((x) => x.id === e.paidBy)?.name ?? '?'}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </Txt>
                       </View>
                       <Txt weight="semibold">{formatBrlCents(e.amountBrl)}</Txt>

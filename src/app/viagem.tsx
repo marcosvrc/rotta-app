@@ -22,7 +22,7 @@ function todayPlus(days: number) {
 /** Nova viagem ou edição da viagem atual (?id=). */
 export default function TripFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { data, addTrip, updateTrip, deleteTrip } = useRotta();
+  const { data, addTrip, updateTrip, deleteTrip, setTripCurrency } = useRotta();
   const existing = id ? data.trips.find((r) => r.trip.id === id)?.trip : undefined;
   const editing = !!existing;
 
@@ -33,6 +33,8 @@ export default function TripFormScreen() {
   const [travelers, setTravelers] = useState(existing?.travelers ?? 2);
   const [budget, setBudget] = useState(existing ? String(existing.budgetBrl) : '');
   const [pace, setPace] = useState<Pace>(existing?.pace ?? 'MEDIO');
+  const existingRecord = id ? data.trips.find((r) => r.trip.id === id) : undefined;
+  const [currency, setCurrency] = useState(existingRecord?.currency ?? '');
   const [errors, setErrors] = useState<string[]>([]);
 
   const save = () => {
@@ -40,11 +42,18 @@ export default function TripFormScreen() {
     const budgetBrl = budget.trim() === '' ? 0 : Number(budget.replace(/\./g, '').replace(',', '.'));
     const input = { destination, country, start: startDate, days, travelers, budgetBrl: Number.isFinite(budgetBrl) ? budgetBrl : -1, pace };
     const problems = validateNewTrip(input);
+    const code = currency.trim().toUpperCase();
+    if (code && !/^[A-Z]{3}$/.test(code)) problems.push('A moeda precisa ter 3 letras, como EUR ou USD.');
     setErrors(problems);
     if (problems.length > 0 || !startDate) return;
     const valid = { ...input, start: startDate, budgetBrl: Math.round(input.budgetBrl) };
-    if (existing) updateTrip((t) => updateTripInfo(t, valid));
-    else addTrip(createTrip(valid));
+    if (existing) {
+      updateTrip((t) => updateTripInfo(t, valid));
+      setTripCurrency(code || undefined);
+    } else {
+      addTrip(createTrip(valid));
+      if (code) setTripCurrency(code);
+    }
     if (editing) close();
     else router.replace('/roteiro');
   };
@@ -96,6 +105,13 @@ export default function TripFormScreen() {
         onChangeText={setBudget}
         placeholder="Ex.: 15000"
         keyboardType="numeric"
+      />
+      <TextField
+        label="Moeda local (opcional)"
+        value={currency}
+        onChangeText={(v) => setCurrency(v.toUpperCase().slice(0, 3))}
+        placeholder="EUR, USD, ARS…"
+        hint="Em branco, o app usa a moeda do país. Os gastos são convertidos para reais."
       />
       <View style={{ gap: 6 }}>
         <Txt weight="semibold" size={13} color={colors.muted}>

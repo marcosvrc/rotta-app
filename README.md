@@ -63,6 +63,9 @@ npm run typecheck   # checagem de tipos
 - SOS com números de emergência do país e contatos da viagem (hospedagem, seguro, consulado), com toque para ligar.
 - Backup em arquivo para trocar de celular (os anexos não entram no backup).
 - Conta com e-mail e senha (Firebase) e sincronização das viagens entre aparelhos. Sem o Firebase configurado, o app funciona só no aparelho.
+- Gastos em moeda local (cotação do dia pelo Frankfurter, guardada para uso offline, ou digitada à mão) e divisão de despesas com acerto de contas.
+- Lembretes no celular, sem internet: prazos do checklist, véspera e 2 horas antes das reservas e começo de cada dia, no fuso do destino.
+- Excluir conta e dados (exigido pelas lojas e pela LGPD), pela Cloud Function `excluirConta`.
 - IA (OpenRouter, via Cloud Function): explica alertas do validador, gera o guia do destino e a história dos lugares a partir da Wikipedia e do Wikivoyage, e sugere paradas para um dia. Veja [docs/IA.md](docs/IA.md).
 - Troca da cor de destaque do app.
 

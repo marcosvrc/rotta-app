@@ -136,7 +136,23 @@ function SignInForm() {
 }
 
 function SignedIn() {
-  const { email, status, lastSyncAt, syncNow, signOut } = useAccount();
+  const { email, status, lastSyncAt, syncNow, signOut, deleteAccount } = useAccount();
+  const [deleting, setDeleting] = useState(false);
+  const [password, setPassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const confirmDelete = () =>
+    confirmAction(
+      'Excluir conta?',
+      'Sua conta, as viagens na nuvem e os dados deste aparelho serão apagados. Isso não pode ser desfeito.',
+      'Excluir',
+      async () => {
+        setBusy(true);
+        const error = await deleteAccount(password);
+        setBusy(false);
+        setDeleteError(error);
+      },
+    );
   const { data } = useRotta();
   const ok = status === 'ok';
   return (
@@ -181,6 +197,33 @@ function SignedIn() {
             })
           }
         />
+        {deleting ? (
+          <Card style={{ marginTop: 20 }}>
+            <Txt weight="semibold" size={15} color={colors.criticalInk}>
+              Excluir conta e dados
+            </Txt>
+            <Txt size={13} color={colors.body} style={{ marginTop: 4, marginBottom: 12 }}>
+              Apaga sua conta, todas as viagens guardadas na nuvem, o histórico de uso da IA e os dados deste aparelho. Faça um
+              backup antes, se quiser guardar as viagens.
+            </Txt>
+            <TextField label="Confirme sua senha" value={password} onChangeText={setPassword} secureTextEntry />
+            <ErrorBox errors={deleteError ? [deleteError] : []} />
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+              <PrimaryButton label="Cancelar" filled={false} onPress={() => setDeleting(false)} />
+              <PrimaryButton
+                label={busy ? 'Excluindo…' : 'Excluir tudo'}
+                onPress={() => (busy || !password ? setDeleteError(password ? null : 'Digite sua senha.') : confirmDelete())}
+                style={{ flex: 1, backgroundColor: '#B42318', borderColor: '#B42318' }}
+              />
+            </View>
+          </Card>
+        ) : (
+          <Pressable onPress={() => setDeleting(true)} accessibilityRole="button" style={{ paddingVertical: 14, alignSelf: 'center' }}>
+            <Txt weight="semibold" color={colors.criticalInk}>
+              Excluir conta e dados
+            </Txt>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );

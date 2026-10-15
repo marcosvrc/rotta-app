@@ -26,7 +26,20 @@ export interface Expense {
   description: string;
   category: ExpenseCategory;
   payment: PaymentMethod;
+  /** Valor em reais (convertido quando o gasto foi em outra moeda). */
   amountBrl: number;
+  /** Moeda em que o gasto foi feito, quando não for real. */
+  currency?: string;
+  /** Valor na moeda original. */
+  originalAmount?: number;
+  /** Reais por 1 unidade da moeda, usada na conversão. */
+  rate?: number;
+  /** Data da cotação (aaaa-mm-dd). */
+  rateDate?: string;
+  /** Participante que pagou (divisão de despesas). */
+  paidBy?: string;
+  /** Participantes que dividem este gasto. Vazio: todos. */
+  splitWith?: string[];
 }
 
 export interface ExpenseGroup<K extends string> {

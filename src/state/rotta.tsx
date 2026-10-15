@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   AppData,
+  ReminderSettings,
   TripRecord,
   activeRecord,
   addTrip as addTripTo,
@@ -18,6 +20,8 @@ import { makeId } from '@/core/editing';
 import { Expense } from '@/core/expenses';
 import { PlaceCatalog, Trip, catalogOf, nightsOf } from '@/core/model';
 import { GuideOutput } from '@/core/ai';
+import { CachedRate } from '@/core/currency';
+import { removeParticipant as removeParticipantFrom } from '@/core/split';
 import { mergePacking, suggestPacking } from '@/core/packing';
 import { SyncPlan, applySync } from '@/core/sync';
 import { Reservation } from '@/core/reservations';
@@ -75,6 +79,12 @@ interface RottaState {
   removePackingItem: (id: string) => void;
   updateSos: (info: SosInfo) => void;
   saveGuide: (guide: GuideOutput) => void;
+  updateExpense: (expense: Expense) => void;
+  addParticipant: (name: string) => void;
+  removeParticipant: (id: string) => void;
+  setTripCurrency: (code: string | undefined) => void;
+  saveRate: (code: string, rate: CachedRate) => void;
+  setReminderSettings: (change: Partial<ReminderSettings>) => void;
   replaceData: (data: AppData) => void;
   /** Dados mais recentes, para a sincronização ler sem esperar um novo render. */
   getData: () => AppData;
@@ -110,6 +120,19 @@ export function RottaProvider({ children }: { children: ReactNode }) {
       .catch(() => setSelectedDay(1))
       .finally(() => setReady(true));
   }, []);
+
+  // Se o app for para segundo plano, salva na hora: o sistema pode fechá-lo antes do atraso acabar.
+  const latest = useRef(data);
+  useEffect(() => {
+    latest.current = data;
+  }, [data]);
+  useEffect(() => {
+    if (!ready) return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(latest.current)).catch(() => undefined);
+    });
+    return () => sub.remove();
+  }, [ready]);
 
   // Salva com um pequeno atraso para juntar várias mudanças seguidas.
   useEffect(() => {
@@ -322,6 +345,20 @@ export function RottaProvider({ children }: { children: ReactNode }) {
       })),
     removePackingItem: (id) => updateActive((r) => ({ ...r, packing: r.packing.filter((i) => i.id !== id) })),
     updateSos: (info) => updateActive((r) => ({ ...r, sos: info })),
+    updateExpense: (expense) =>
+      updateActive((r) => ({ ...r, expenses: r.expenses.map((e) => (e.id === expense.id ? expense : e)) })),
+    addParticipant: (name) =>
+      updateActive((r) => ({ ...r, participants: [...r.participants, { id: makeId('pessoa'), name: name.trim() }] })),
+    removeParticipant: (id) =>
+      updateActive((r) => ({
+        ...r,
+        participants: r.participants.filter((p) => p.id !== id),
+        expenses: removeParticipantFrom(r.expenses, id),
+      })),
+    setTripCurrency: (code) => updateActive((r) => ({ ...r, currency: code })),
+    saveRate: (code, rate) => setData((d) => ({ ...d, rates: { ...d.rates, [code]: rate } })),
+    setReminderSettings: (change) =>
+      setData((d) => ({ ...d, settings: { ...d.settings, reminders: { ...d.settings.reminders, ...change } } })),
     saveGuide: (guide) => updateActive((r) => ({ ...r, guide: { data: guide, fetchedAt: new Date().toISOString() } })),
     getData,
     applySyncPlan,
