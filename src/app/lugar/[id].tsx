@@ -27,6 +27,7 @@ export default function PlaceScreen() {
   const ai = useAiCall<StoryOutput>();
   const [storyMissing, setStoryMissing] = useState(false);
   const [photoError, setPhotoError] = useState(false);
+  const [photoAttempt, setPhotoAttempt] = useState(0);
 
   // Fotos do Commons: busca uma vez por lugar e guarda (com autor e licença) junto da viagem.
   const needsPhotos = !!place && !place.photos;
@@ -42,12 +43,16 @@ export default function PlaceScreen() {
           places: t.places.map((x) => (x.id === id ? { ...x, photos: { photos, fetchedAt: new Date().toISOString() } } : x)),
         }));
       })
-      .catch(() => alive && setPhotoError(true));
+      .catch((e) => {
+        // Aparece no Terminal do Expo: ajuda a saber se foi rede, bloqueio (403) ou outra coisa.
+        console.warn('Fotos do lugar:', e instanceof Error ? e.message : e);
+        if (alive) setPhotoError(true);
+      });
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsPhotos, placeName]);
+  }, [needsPhotos, placeName, photoAttempt]);
   const photoStatus: PhotoStatus = place?.photos ? 'pronto' : photoError ? 'sem-conexao' : 'buscando';
 
   if (!place) {
@@ -83,7 +88,14 @@ export default function PlaceScreen() {
   return (
     <View style={styles.screen}>
       <View>
-        <PhotoHeader place={place} status={photoStatus} />
+        <PhotoHeader
+          place={place}
+          status={photoStatus}
+          onRetry={() => {
+            setPhotoError(false);
+            setPhotoAttempt((n) => n + 1);
+          }}
+        />
         <SafeAreaView edges={['top']} style={styles.overlay} pointerEvents="box-none">
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/roteiro'))}
@@ -202,17 +214,25 @@ export default function PlaceScreen() {
 type PhotoStatus = 'buscando' | 'pronto' | 'sem-conexao';
 
 /** Fotos do lugar em carrossel, com crédito do autor e licença (exigido pelo Commons). */
-function PhotoHeader({ place, status }: { place: Place; status: PhotoStatus }) {
+function PhotoHeader({ place, status, onRetry }: { place: Place; status: PhotoStatus; onRetry: () => void }) {
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(0);
   const photos = place.photos?.photos ?? [];
 
   if (photos.length === 0) {
-    const label = status === 'buscando' ? 'Buscando fotos…' : status === 'sem-conexao' ? 'Sem conexão para buscar fotos' : 'Sem fotos deste lugar';
+    const label =
+      status === 'buscando' ? 'Buscando fotos…' : status === 'sem-conexao' ? 'Não deu para buscar fotos · tocar para tentar de novo' : 'Sem fotos deste lugar';
     return (
       <View>
         <CityIllustration height={240} />
-        <Badge label={label} bg="rgba(27,34,48,0.72)" fg="#FFFFFF" style={styles.photoBadge} />
+        <Pressable
+          onPress={status === 'sem-conexao' ? onRetry : undefined}
+          disabled={status !== 'sem-conexao'}
+          accessibilityRole={status === 'sem-conexao' ? 'button' : undefined}
+          style={styles.photoBadge}
+        >
+          <Badge label={label} bg="rgba(27,34,48,0.72)" fg="#FFFFFF" />
+        </Pressable>
       </View>
     );
   }

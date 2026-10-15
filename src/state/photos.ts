@@ -1,14 +1,21 @@
+import { Platform } from 'react-native';
+
 import { Photo, commonsSearchUrl, fileInfoUrl, mergePhotos, pageImageUrl, parseImageInfo, parsePageImage } from '@/core/photos';
 
-/** A Wikimedia pede que apps se identifiquem. */
-const HEADERS = { 'Api-User-Agent': 'Rotta/0.7 (https://github.com/marcosvrc/rotta-app)' };
+const AGENT = 'Rotta/0.8 (https://github.com/marcosvrc/rotta-app)';
+/**
+ * A Wikimedia recusa (403) pedidos com User-Agent genérico, como o "okhttp" padrão do Android.
+ * No celular mandamos um User-Agent do app; no navegador ele é proibido, então vai o Api-User-Agent.
+ */
+const HEADERS: Record<string, string> =
+  Platform.OS === 'web' ? { 'Api-User-Agent': AGENT } : { 'User-Agent': AGENT, 'Api-User-Agent': AGENT };
 
 async function getJson(url: string): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
   try {
     const res = await fetch(url, { headers: HEADERS, signal: controller.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} em ${new URL(url).host}`);
     return await res.json();
   } finally {
     clearTimeout(timer);
