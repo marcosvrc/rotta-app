@@ -8,7 +8,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { AiRequest, AiResponse } from '../../src/core/ai';
 import { deleteAccount, isRecentLogin } from './account';
 import { firestoreCache, recordUsage, usedToday } from './firestore';
-import { LlmError, openRouter } from './openrouter';
+import { LlmError, Reasoning, openRouter } from './openrouter';
 import { runTask } from './orchestrator';
 import { requestSchema } from './schemas';
 import { wikipediaSummary, wikivoyageText } from './wiki';
@@ -24,6 +24,13 @@ const MODEL_STRONG = defineString('AI_MODEL_STRONG', { default: 'anthropic/claud
 const DAILY_LIMIT = defineInt('AI_DAILY_LIMIT', { default: 30 });
 /** Para testes com um servidor falso no emulador. Vazio usa o OpenRouter. */
 const OPENROUTER_BASE_URL = defineString('OPENROUTER_BASE_URL', { default: '' });
+/** Raciocínio interno de cada modelo: off, low, medium ou high. O Sonnet 5.5 não aceita off. */
+const AI_REASONING_FAST = defineString('AI_REASONING_FAST', { default: 'off' });
+const AI_REASONING_STRONG = defineString('AI_REASONING_STRONG', { default: 'low' });
+
+function reasoningOf(value: string, fallback: Reasoning): Reasoning {
+  return (['off', 'low', 'medium', 'high'] as const).find((v) => v === value) ?? fallback;
+}
 
 async function safeSource<T>(name: string, load: () => Promise<T | null>): Promise<T | null> {
   try {
@@ -38,7 +45,8 @@ export const ia = onCall(
   {
     region: 'southamerica-east1',
     secrets: [OPENROUTER_API_KEY],
-    timeoutSeconds: 120,
+    // Até duas chamadas ao modelo por pedido, cada uma com até ~110 s.
+    timeoutSeconds: 300,
     memory: '256MiB',
     // Teto de instâncias: limita o estrago se alguém tentar abusar.
     maxInstances: 5,
@@ -66,7 +74,12 @@ export const ia = onCall(
     try {
       const result = await runTask(req, {
         llm: openRouter(apiKey, fetch, OPENROUTER_BASE_URL.value() || undefined),
-        models: { fast: MODEL_FAST.value(), strong: MODEL_STRONG.value() },
+        models: {
+          fast: MODEL_FAST.value(),
+          strong: MODEL_STRONG.value(),
+          fastReasoning: reasoningOf(AI_REASONING_FAST.value(), 'off'),
+          strongReasoning: reasoningOf(AI_REASONING_STRONG.value(), 'low'),
+        },
         // Fonte fora do ar não derruba o pedido: a tarefa segue sem ela (e sem inventar, no caso da história).
         wikipedia: (q) => safeSource('wikipedia', () => wikipediaSummary(fetch, q)),
         wikivoyage: (d) => safeSource('wikivoyage', () => wikivoyageText(fetch, d)),

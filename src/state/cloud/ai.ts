@@ -18,7 +18,7 @@ export class AiError extends Error {}
 /** Chama o orquestrador de IA. A chave do OpenRouter fica só no servidor. */
 export async function askAi<T extends AiTask>(request: Extract<AiRequest, { task: T }>): Promise<AiResponse<T> & { data: AiOutputs[T] }> {
   try {
-    const call = httpsCallable<AiRequest, AiResponse<T>>(cloudFunctions(), 'ia', { timeout: 120_000 });
+    const call = httpsCallable<AiRequest, AiResponse<T>>(cloudFunctions(), 'ia', { timeout: 280_000 });
     const result = await call(request);
     return result.data;
   } catch (e) {

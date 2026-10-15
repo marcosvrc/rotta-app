@@ -28,7 +28,7 @@ function deps(replies: string[], overrides: Partial<Deps> = {}) {
       if (text === undefined) throw new Error('sem resposta');
       return { text, promptTokens: 10, completionTokens: 5, cost: 0.001 };
     },
-    models: { fast: 'rapido', strong: 'forte' },
+    models: { fast: 'rapido', strong: 'forte', fastReasoning: 'off', strongReasoning: 'low' },
     wikipedia: async () => null,
     wikivoyage: async () => null,
     cache: memoryCache(),
@@ -124,6 +124,22 @@ describe('respostas fora do padrão', () => {
     expect(calls[1].user).toContain('foi cortada');
   });
 
+  it('resposta vazia (raciocínio gastou os tokens) também tenta de novo com mais espaço', async () => {
+    const calls: ChatRequest[] = [];
+    const d: Deps = {
+      ...deps([]).d,
+      llm: async (req) => {
+        calls.push(req);
+        return calls.length === 1
+          ? { text: '', promptTokens: 1, completionTokens: 2000, cost: 0, finishReason: 'length' }
+          : { text: '{"explanation": "Ok.", "tip": "Faça."}', promptTokens: 1, completionTokens: 9, cost: 0, finishReason: 'stop' };
+      },
+    };
+    const input = { destination: 'L', dayLabel: 'D', placeName: 'P', issueKind: 'K', issueText: 'T' };
+    await expect(runTask({ task: 'explicar_alerta', input }, d)).resolves.toMatchObject({ data: { tip: 'Faça.' } });
+    expect(calls.map((c) => c.maxTokens)).toEqual([400, 800]);
+  });
+
   it('explica o motivo quando desiste', async () => {
     const { d } = deps(['{"summary": ""}', 'nada']);
     await expect(runTask({ task: 'guia_destino', input: { destination: 'Porto', country: '' } }, d)).rejects.toThrow(/summary.*\|.*JSON válido/);
@@ -177,6 +193,8 @@ describe('sugerir paradas', () => {
     const { d, calls } = deps([reply], { wikivoyage: async () => voyage });
     const r = await runTask({ task: 'sugerir_paradas', input }, d);
     expect(calls[0].model).toBe('forte');
+    expect(calls[0].reasoning).toBe('low');
+    expect(calls[0].maxTokens).toBe(6000);
     expect(calls[0].user).toContain('chuva prevista');
     expect(r.data).toMatchObject({ sources: [voyage.source] });
     const names = (r.data as { suggestions: { name: string }[] }).suggestions.map((s) => s.name);
@@ -233,20 +251,24 @@ describe('OpenRouter', () => {
       json: async () => ({ choices: [{ message: { content: '{"a":1}' } }], usage: { prompt_tokens: 7, completion_tokens: 3, cost: 0.0002 } }),
     }));
     const llm = openRouter('sk-or-teste', fetcher);
-    const r = await llm({ model: 'm', system: 's', user: 'u', maxTokens: 10 });
+    const r = await llm({ model: 'm', reasoning: 'off', system: 's', user: 'u', maxTokens: 10 });
     expect(r).toMatchObject({ text: '{"a":1}', promptTokens: 7, completionTokens: 3, cost: 0.0002 });
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, { headers: Record<string, string>; body: string }];
     expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
     expect(init.headers.Authorization).toBe('Bearer sk-or-teste');
     expect(init.body).not.toContain('sk-or-teste');
     expect(JSON.parse(init.body).response_format).toEqual({ type: 'json_object' });
+    expect(JSON.parse(init.body).reasoning).toEqual({ enabled: false });
+    await llm({ model: 'm', reasoning: 'low', system: 's', user: 'u', maxTokens: 10 });
+    const [, second] = fetcher.mock.calls[1] as unknown as [string, { body: string }];
+    expect(JSON.parse(second.body).reasoning).toEqual({ effort: 'low', exclude: true });
   });
 
   it('marca 429 e 5xx como temporários', async () => {
     const llm = openRouter('k', async () => ({ ok: false, status: 429, json: async () => ({}) }));
-    await expect(llm({ model: 'm', system: 's', user: 'u', maxTokens: 1 })).rejects.toMatchObject({ retryable: true });
+    await expect(llm({ model: 'm', reasoning: 'off', system: 's', user: 'u', maxTokens: 1 })).rejects.toMatchObject({ retryable: true });
     const llm401 = openRouter('k', async () => ({ ok: false, status: 401, json: async () => ({}) }));
-    await expect(llm401({ model: 'm', system: 's', user: 'u', maxTokens: 1 })).rejects.toBeInstanceOf(LlmError);
+    await expect(llm401({ model: 'm', reasoning: 'off', system: 's', user: 'u', maxTokens: 1 })).rejects.toBeInstanceOf(LlmError);
   });
 
   it('lê JSON com cerca de código', () => {

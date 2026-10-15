@@ -1,7 +1,15 @@
 import { FetchLike } from './wiki';
 
+/**
+ * Raciocínio interno do modelo. "off" desliga (mais rápido e barato; serve para modelos em que é opcional).
+ * Modelos com raciocínio obrigatório (ex.: Claude Sonnet 5.5) exigem um esforço, como "low".
+ * Os tokens de raciocínio contam no limite de tokens da resposta.
+ */
+export type Reasoning = 'off' | 'low' | 'medium' | 'high';
+
 export interface ChatRequest {
   model: string;
+  reasoning: Reasoning;
   system: string;
   user: string;
   maxTokens: number;
@@ -28,7 +36,8 @@ export class LlmError extends Error {
   }
 }
 
-const TIMEOUT_MS = 45_000;
+/** Modelos com raciocínio podem levar mais de um minuto em respostas longas. */
+const TIMEOUT_MS = 110_000;
 
 type PostFetch = (
   url: string,
@@ -37,7 +46,7 @@ type PostFetch = (
 
 /** Cliente mínimo do OpenRouter (chat completions, resposta em JSON). A chave nunca sai do servidor. */
 export function openRouter(apiKey: string, fetcher: PostFetch, baseUrl = 'https://openrouter.ai/api/v1'): Llm {
-  return async ({ model, system, user, maxTokens }) => {
+  return async ({ model, reasoning, system, user, maxTokens }) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -54,6 +63,7 @@ export function openRouter(apiKey: string, fetcher: PostFetch, baseUrl = 'https:
           max_tokens: maxTokens,
           temperature: 0.4,
           response_format: { type: 'json_object' },
+          reasoning: reasoning === 'off' ? { enabled: false } : { effort: reasoning, exclude: true },
           messages: [
             { role: 'system', content: system },
             { role: 'user', content: user },
@@ -69,9 +79,10 @@ export function openRouter(apiKey: string, fetcher: PostFetch, baseUrl = 'https:
       const choice = body.choices?.[0];
       if (choice?.error) throw new LlmError(`Erro do modelo: ${choice.error.message ?? ''}`, true);
       const text = choice?.message?.content;
-      if (!text) throw new LlmError('Resposta vazia do modelo', true);
+      // Conteúdo vazio acontece quando o raciocínio interno do modelo gasta todo o limite de tokens.
+      // O orquestrador trata como resposta cortada e tenta de novo com mais espaço.
       return {
-        text,
+        text: text ?? '',
         promptTokens: body.usage?.prompt_tokens ?? 0,
         completionTokens: body.usage?.completion_tokens ?? 0,
         cost: body.usage?.cost ?? 0,

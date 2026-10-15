@@ -49,7 +49,11 @@ Crie `functions/.env.<id-do-projeto>` (não vai para o git) e publique de novo:
 AI_MODEL_FAST=anthropic/claude-haiku-5.5
 AI_MODEL_STRONG=anthropic/claude-sonnet-5.5
 AI_DAILY_LIMIT=30
+AI_REASONING_FAST=off
+AI_REASONING_STRONG=low
 ```
+
+`AI_REASONING_*` controla o raciocínio interno de cada modelo (`off`, `low`, `medium`, `high`). Os tokens de raciocínio contam no limite da resposta: com esforço alto, a resposta pode vir vazia. O Claude Sonnet 5.5 não aceita `off`; use `low`.
 
 O consumo por usuário e por dia fica em `ai_usage/{uid}/days/{data}` (chamadas, tokens e custo), e cada chamada aparece no log da função com tarefa, tokens, custo e tempo.
 

@@ -13,7 +13,7 @@ import {
   SuggestInput,
   SuggestOutput,
 } from '../../src/core/ai';
-import { ChatResult, Llm, parseModelJson } from './openrouter';
+import { ChatResult, Llm, Reasoning, parseModelJson } from './openrouter';
 import { explainSchema, guideModelSchema, storyModelSchema, suggestModelSchema } from './schemas';
 import { WikiText } from './wiki';
 
@@ -24,7 +24,7 @@ export interface Cache {
 
 export interface Deps {
   llm: Llm;
-  models: { fast: string; strong: string };
+  models: { fast: string; strong: string; fastReasoning: Reasoning; strongReasoning: Reasoning };
   wikipedia: (query: string) => Promise<WikiText | null>;
   wikivoyage: (destination: string) => Promise<WikiText | null>;
   cache: Cache;
@@ -71,11 +71,14 @@ async function ask<T>(deps: Deps, task: AiTask, model: string, system: string, u
   let tokens = maxTokens;
   const problems: string[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await deps.llm({ model, system, user: prompt, maxTokens: tokens });
+    const reasoning = model === deps.models.strong ? deps.models.strongReasoning : deps.models.fastReasoning;
+    const result = await deps.llm({ model, reasoning, system, user: prompt, maxTokens: tokens });
     deps.onUsage?.(task, result);
     let problem: string;
-    if (result.finishReason === 'length') {
-      problem = `resposta cortada no limite de ${tokens} tokens`;
+    if (result.finishReason === 'length' || !result.text.trim()) {
+      problem = result.text.trim()
+        ? `resposta cortada no limite de ${tokens} tokens`
+        : `resposta vazia (fim: ${result.finishReason ?? 'desconhecido'}, ${result.completionTokens} tokens)`;
       tokens *= 2;
       prompt = `${user}\n\nSua resposta anterior ficou longa demais e foi cortada. Seja mais breve e responda só com o JSON.`;
     } else {
@@ -218,7 +221,7 @@ async function suggest(deps: Deps, input: SuggestInput): Promise<TaskResult<'sug
   ]
     .filter(Boolean)
     .join('\n');
-  const parsed = await ask(deps, 'sugerir_paradas', deps.models.strong, BASE_RULES, user, suggestModelSchema, 2000);
+  const parsed = await ask(deps, 'sugerir_paradas', deps.models.strong, BASE_RULES, user, suggestModelSchema, 6000);
   return {
     data: { suggestions: cleanSuggestions(input, parsed.suggestions), sources: voyage ? [voyage.source] : ([] as Source[]) },
     cached: false,
